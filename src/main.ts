@@ -32,7 +32,6 @@ import {
 	TabClosingBehavior,
 } from "./services/CloseTabs";
 import { REFRESH_TIMEOUT_LONG } from "./constants/Timeouts";
-import { runPersistenceMigrations } from "./history/Migration";
 import { VERTICAL_TABS_ICON } from "./icon";
 import { scrollToActiveTab } from "./services/ScrollableTabs";
 import { updateOrientationLabel } from "./services/Orientation";
@@ -42,14 +41,16 @@ import { isHoverEditorEnabled } from "./services/HoverEditorTabs";
 import { removeAllTabControlButtons } from "./services/TabControlButtons";
 import { ViewEphemeralState } from "obsidian-typings";
 import { localStorageService } from "./stores/LocalStorageService";
+import { registerNativeGroupVisibilityMenu } from "./services/NativeGroupVisibilityMenu";
 
 export default class ObsidianVerticalTabs extends Plugin {
 	settings: Settings = DEFAULT_SETTINGS;
 
 	async onload() {
-		addIcon("vertical-tabs", VERTICAL_TABS_ICON);
+		addIcon("vertical-tabs-custom", VERTICAL_TABS_ICON);
 		await this.loadSettings();
 		await this.setupLocalStorageService();
+		this.register(registerNativeGroupVisibilityMenu(this.app));
 		const disableOnThisDevice = loadDisableOnThisDevice();
 		if (disableOnThisDevice) {
 			void useSettings.getState().loadSettings(this);
@@ -132,7 +133,6 @@ export default class ObsidianVerticalTabs extends Plugin {
 
 	async setupLocalStorageService() {
 		localStorageService.init(this.app);
-		await runPersistenceMigrations(this);
 		hydrateViewState();
 		hydrateTabCacheStore();
 	}

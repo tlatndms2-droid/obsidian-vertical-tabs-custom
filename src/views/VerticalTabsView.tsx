@@ -5,7 +5,7 @@ import { NavigationContainer } from "../components/NavigationContainer";
 import { PluginContext } from "../models/PluginContext";
 import ObsidianVerticalTabs from "../main";
 
-export const VERTICAL_TABS_VIEW = "vertical-tabs";
+export const VERTICAL_TABS_VIEW = "vertical-tabs-custom";
 
 export class VerticalTabsView extends ItemView {
 	root: Root | null = null;
@@ -15,7 +15,7 @@ export class VerticalTabsView extends ItemView {
 		super(leaf);
 		this.navigation = false;
 		this.plugin = plugin;
-		this.icon = "vertical-tabs";
+		this.icon = "vertical-tabs-custom";
 		this.leaf.containerEl?.addClass("obsidian-vertical-tabs-tab-content");
 		this.leaf.tabHeaderEl?.addClass("obsidian-vertical-tabs-tab-header");
 	}

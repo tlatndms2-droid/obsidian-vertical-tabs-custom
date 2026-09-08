@@ -27,6 +27,7 @@ export default defineConfig(
 				projectService: {
 					allowDefaultProject: ["eslint.config.mts", "manifest.json"],
 				},
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- import.meta.dirname is supplied by Node at runtime.
 				tsconfigRootDir: import.meta.dirname,
 				extraFileExtensions: [".json"],
 			},

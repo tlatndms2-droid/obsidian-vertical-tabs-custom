@@ -149,7 +149,7 @@ export const Tab = memo(function Tab(props: TabProps) {
 			// Signal Obsidian to show the preview
 			workspace.trigger("hover-link", {
 				event: event.nativeEvent,
-				source: "vertical-tabs",
+				source: "vertical-tabs-custom",
 				hoverParent: leaf,
 				targetEl: ref.current,
 				linktext: file.path,

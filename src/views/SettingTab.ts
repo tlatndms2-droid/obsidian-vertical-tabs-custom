@@ -101,7 +101,7 @@ export class ObsidianVerticalTabsSettingTab extends PluginSettingTab {
 		super(app, plugin);
 		this.plugin = plugin;
 		if (requireApiVersion("1.11.0")) {
-			this.icon = "vertical-tabs";
+			this.icon = "vertical-tabs-custom";
 		}
 	}
 

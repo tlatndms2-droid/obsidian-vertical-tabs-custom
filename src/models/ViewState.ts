@@ -199,54 +199,73 @@ interface ViewState {
 }
 
 const saveViewState = (titles: GroupTitles) => {
-	localStorageService.save("view-state", Array.from(titles.entries()));
+	localStorageService.save("vertical-tabs-custom:view-state", Array.from(titles.entries()));
 };
 
 const loadViewState = (): GroupTitles | null => {
 	const entries =
-		localStorageService.migrate<[Identifier, string][]>("view-state");
+		localStorageService.load<[Identifier, string][]>(
+			"vertical-tabs-custom:view-state"
+		);
 	if (!entries) return null;
 	return new DefaultRecord(factory, entries);
 };
 
 const saveHiddenGroups = (hiddenGroups: Array<Identifier>) => {
-	localStorageService.save("hidden-groups", hiddenGroups);
+	localStorageService.save("vertical-tabs-custom:hidden-groups", hiddenGroups);
 };
 
 // prettier-ignore
 const loadHiddenGroups = (): Array<Identifier> => {
-	return localStorageService.migrate<Array<Identifier>>("hidden-groups") ?? [];
+	return (
+		localStorageService.load<Array<Identifier>>(
+			"vertical-tabs-custom:hidden-groups"
+		) ?? []
+	);
 };
 
 const saveCollapsedGroups = (collapsedGroups: Array<Identifier>) => {
-	localStorageService.save("collapsed-groups", collapsedGroups);
+	localStorageService.save("vertical-tabs-custom:collapsed-groups", collapsedGroups);
 };
 
 // prettier-ignore
 const loadCollapsedGroups = (): Array<Identifier> => {
-	return localStorageService.migrate<Array<Identifier>>("collapsed-groups") ?? [];
+	return (
+		localStorageService.load<Array<Identifier>>(
+			"vertical-tabs-custom:collapsed-groups"
+		) ?? []
+	);
 };
 
 const saveNonEphemeralTabs = (tabs: Array<Identifier>) => {
-	localStorageService.save("nonephemeral-tabs", Array.from(tabs));
+	localStorageService.save("vertical-tabs-custom:nonephemeral-tabs", Array.from(tabs));
 };
 
 // prettier-ignore
 const loadNonEphemeralTabs = (): Array<Identifier> => {
-	return localStorageService.migrate<Array<Identifier>>("nonephemeral-tabs") ?? [];
+	return (
+		localStorageService.load<Array<Identifier>>(
+			"vertical-tabs-custom:nonephemeral-tabs"
+		) ?? []
+	);
 };
 
 const clearNonEphemeralTabs = () => {
-	localStorageService.remove("nonephemeral-tabs");
+	localStorageService.remove("vertical-tabs-custom:nonephemeral-tabs");
 };
 
 const saveGroupUnhideTimes = (times: GroupUnhideTimes) => {
-	localStorageService.save("group-unhide-times", Array.from(times.entries()));
+	localStorageService.save(
+		"vertical-tabs-custom:group-unhide-times",
+		Array.from(times.entries())
+	);
 };
 
 // prettier-ignore
 const loadGroupUnhideTimes = (): GroupUnhideTimes => {
-	const entries = localStorageService.migrate<[Identifier, number][]>("group-unhide-times");
+	const entries = localStorageService.load<[Identifier, number][]>(
+		"vertical-tabs-custom:group-unhide-times"
+	);
 	if (!entries) return createNewGroupUnhideTimes() as GroupUnhideTimes;
 	return new DefaultRecord(() => 0, entries);
 };

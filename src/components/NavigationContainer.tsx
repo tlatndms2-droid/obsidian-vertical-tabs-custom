@@ -415,7 +415,7 @@ export const NavigationContainer = () => {
 				}
 			},
 		});
-		plugin.registerHoverLinkSource("vertical-tabs", {
+		plugin.registerHoverLinkSource("vertical-tabs-custom", {
 			defaultMod: true,
 			display: "Vertical Tabs",
 		});
