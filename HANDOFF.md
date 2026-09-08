@@ -10,6 +10,20 @@ Last updated: 2026-09-08 (Asia/Seoul)
 - No build, Obsidian runtime test, BRAT release, tag, or GitHub Release has been completed for the custom version.
 - Do not report the requested feature as implemented until the runtime acceptance checks in this document pass.
 
+### 다른 PC에서 Codex에게 보낼 시작 지시문
+
+```text
+이 저장소의 HANDOFF.md를 처음부터 끝까지 읽고 현재 main, origin/main,
+upstream 0.17.7 태그, manifest, GitHub 태그와 Release를 다시 확인해.
+아직 기능은 구현되지 않았으며, 기존 Vertical Tabs를 새로 만들지 말고
+기존 hiddenGroups/toggleHiddenGroup Hide 기능을 그대로 재사용해야 해.
+HANDOFF의 Minimum implementation plan과 Acceptance tests 범위만 구현하고,
+사용자의 실제 Vault가 아닌 격리된 Obsidian Sandbox에서 검증해.
+빌드 성공만으로 완료라고 하지 말고 실제 작업 창 탭 드롭다운에서
+전체 그룹 Hide/Show 토글과 사이드바 동기화를 확인해.
+릴리스는 검증이 끝난 뒤에만 진행해.
+```
+
 ## 2. User goal
 
 Keep the existing Vertical Tabs plugin and its behavior, then add one small access point:
@@ -198,6 +212,8 @@ Only release after the acceptance tests pass.
 ```powershell
 git clone https://github.com/tlatndms2-droid/obsidian-vertical-tabs-custom.git
 Set-Location obsidian-vertical-tabs-custom
+git remote add upstream https://github.com/oxdc/obsidian-vertical-tabs.git
+git fetch upstream --tags
 git remote -v
 git status --short --branch
 ```
