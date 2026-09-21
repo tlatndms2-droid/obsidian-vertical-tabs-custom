@@ -4,7 +4,7 @@ Updated: 2026-09-21 (Asia/Seoul)
 
 ## Current implementation
 
-- Version: 0.17.7-custom.3; plugin ID: vertical-tabs-custom.
+- Version: 0.17.7-custom.4; plugin ID: vertical-tabs-custom.
 - Adds desktop-only Folding Tab Group Mode to the existing native tab-list menu.
 - Existing native group Hide/Show implementation from custom.1 is retained.
 - Earlier statements that the custom implementation has not started are obsolete; history is available in Git.
@@ -15,6 +15,7 @@ Updated: 2026-09-21 (Asia/Seoul)
 - One folding bundle per outer side-by-side column; internal rows/columns keep their real Tab Groups.
 - Rows-only workspace shares one Bar and cannot collapse its sole bundle.
 - 38px left Bar, 16px overlapping-tab icon and rotated title near the top; icon/title sit below the header controls to avoid Windows caption buttons. Click toggles, right-click renames a real group, drag reorders columns within the same Window.
+- Native split-handle dragging takes priority over folding widths and disables animation during resize. Stored dimensions include the 38px Bar so releasing the pointer preserves the selected width.
 - Collapse/expand uses a 240ms eased width transition; contents hide after collapse finishes. Reduced-motion preferences disable transitions.
 - Last expanded bundle cannot collapse. Other bundles do not automatically collapse.
 - Selecting an internal tab expands its bundle; Bar expansion restores its last visible active tab.
@@ -41,5 +42,5 @@ Updated: 2026-09-21 (Asia/Seoul)
 - Final cold-start validation: Obsidian 1.13.7. Initial interaction checks also ran on 1.12.7.
 - Evidence: C:/Users/tlatn/Documents/Codex/FoldingEvidence-20260921
 - Leave the Sandbox open and its fixtures intact for user review. Do not modify the live Vault.
-- Delivery tag: 0.17.7-custom.3.
+- Delivery tag: 0.17.7-custom.4.
 - User explicitly requested stopping after GitHub Release creation. Do not re-download Release assets or run BRAT installation/update verification unless newly requested.

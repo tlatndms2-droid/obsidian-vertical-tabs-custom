@@ -87,6 +87,11 @@ export class FoldingTabGroups {
 		return node.type === "tabs" ? [node] : node.children.flatMap(child => this.groups(child));
 	}
 	private name(group: Node) { return useViewState.getState().groupTitles.get(group.id) || DEFAULT_GROUP_TITLE; }
+	private weight(node: Node) {
+		// Native dimensions include the Bar; flex distributes only the space after it.
+		const parentWidth = node.containerEl.parentElement?.clientWidth || 0;
+		return parentWidth && node.dimension ? Math.max(0, parentWidth * node.dimension / 100 - 38) : 100;
+	}
 	private updateBar(bundle: Bundle) {
 		const name = bundle.groups.map(group => this.name(group)).join(" + ");
 		bundle.bar.querySelector(".vt-fold-title")!.textContent = name;
@@ -116,7 +121,7 @@ export class FoldingTabGroups {
 			for (const bundle of this.bundles) {
 				bundle.groups = this.groups(bundle.node);
 				this.updateBar(bundle);
-				bundle.node.containerEl.style.setProperty("--vt-fold-weight", String(bundle.node.dimension || 100));
+				bundle.node.containerEl.style.setProperty("--vt-fold-weight", String(this.weight(bundle.node)));
 			}
 			this.apply(); return;
 		}
@@ -143,7 +148,7 @@ export class FoldingTabGroups {
 				bar.addEventListener("contextmenu", event => { event.preventDefault(); this.renameMenu(bundle, event); });
 				bar.addEventListener("pointerdown", event => this.drag(bundle, event));
 				node.containerEl.addClass("vt-fold-node");
-				node.containerEl.style.setProperty("--vt-fold-weight", String(node.dimension || 100));
+				node.containerEl.style.setProperty("--vt-fold-weight", String(this.weight(node)));
 				node.containerEl.appendChild(bar);
 				this.state(bundle);
 			}
@@ -218,6 +223,35 @@ export class FoldingTabGroups {
 	private bindDocument(doc: Document) {
 		if (this.documents.has(doc)) return;
 		this.documents.add(doc);
+		let resizeFrame: number | undefined;
+		const finishResize = () => {
+			if (!doc.body.hasClass("vt-fold-resizing")) return;
+			if (resizeFrame !== undefined) doc.defaultView?.cancelAnimationFrame(resizeFrame);
+			resizeFrame = doc.defaultView?.requestAnimationFrame(() => {
+				resizeFrame = undefined;
+				this.refresh();
+				// Commit native mouseup dimensions while transitions are still disabled.
+				void doc.body.offsetWidth;
+				doc.body.removeClass("vt-fold-resizing");
+			});
+		};
+		const startResize = (event: PointerEvent) => {
+			if (!this.enabled || event.button !== 0) return;
+			const target = event.target as HTMLElement;
+			if (target.closest?.(".workspace-leaf-resize-handle") && target.closest(".workspace")) doc.body.addClass("vt-fold-resizing");
+		};
+		doc.addEventListener("pointerdown", startResize, true);
+		doc.addEventListener("pointerup", finishResize);
+		doc.addEventListener("pointercancel", finishResize);
+		doc.defaultView?.addEventListener("blur", finishResize);
+		this.cleanup.push(() => {
+			doc.removeEventListener("pointerdown", startResize, true);
+			doc.removeEventListener("pointerup", finishResize);
+			doc.removeEventListener("pointercancel", finishResize);
+			doc.defaultView?.removeEventListener("blur", finishResize);
+			if (resizeFrame !== undefined) doc.defaultView?.cancelAnimationFrame(resizeFrame);
+			doc.body.removeClass("vt-fold-resizing");
+		});
 		const resized = (event: TransitionEvent) => {
 			if (event.propertyName === "flex-grow" && (event.target as HTMLElement)?.classList?.contains("vt-fold-node")) this.plugin.app.workspace.requestResize();
 		};

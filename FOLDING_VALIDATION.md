@@ -59,4 +59,17 @@ Final local artifact SHA-256:
 
 ## Delivery boundary (unchanged)
 
+## 0.17.7-custom.4 split resize fix (2026-09-21)
+
+- Root cause: folding's important flex rule overrode Obsidian's temporary pixel widths during split-handle dragging. Width proportions also counted the fixed Bar twice after pointer release.
+- Native resize now uses its temporary pixel widths without animation; pointer release refreshes Bar-adjusted proportions before restoring folding animation. Listeners and pending frame are removed on plugin disposal.
+- TypeScript, production build, six layout tests passed; ESLint zero errors and two pre-existing warnings.
+- Obsidian 1.13.7 isolated Sandbox: leftward 200px drag changed 638px to 438px during drag and stayed 438px after release. Rightward 150px drag changed 438px to 588px and stayed 588px after release.
+- Collapse still reached 38px with 13 sampled intermediate widths. Re-expansion restored 588px / 988px. Icons and rotated titles remained visible. No captured interaction page errors.
+- Normal process quit and relaunch loaded custom.4 and retained dimensions and exact 588px / 988px widths.
+- Final main.js, styles.css and manifest.json matched the Sandbox-installed bytes. Evidence, hashes, backups and screenshots: C:/Users/tlatn/Documents/Codex/FoldingEvidence-20260921/custom4.
+- Sandbox remains open with both bundles expanded for drag review.
+
+## Delivery scope
+
 Release asset re-download and BRAT installation/update checks are intentionally omitted at the user's request. User installation verification is separate from the local Sandbox results above.

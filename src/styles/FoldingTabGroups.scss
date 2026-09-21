@@ -49,6 +49,11 @@
 	flex-grow: 0 !important;
 	> :not(.vt-fold-bar) { visibility: hidden; transition: visibility 0s 240ms; pointer-events: none; }
 }
+// Obsidian writes pixel widths while a native split handle is being dragged.
+.vt-fold-resizing .vt-fold-node {
+	transition: none;
+	&:not(.vt-fold-collapsed)[style*="width:"] { flex: 0 0 auto !important; }
+}
 @media (prefers-reduced-motion: reduce) {
 	.vt-fold-node { transition: none; }
 	.vt-fold-node.vt-fold-collapsed > :not(.vt-fold-bar) { transition: none; }
