@@ -1,0 +1,41 @@
+.vt-fold-node {
+	position: relative !important;
+	padding-left: 22px !important;
+	min-width: 22px !important;
+	&:not(.vt-fold-collapsed) { flex: var(--vt-fold-weight, 100) 1 0% !important; }
+	> .vt-fold-bar {
+		position: absolute;
+		inset: 0 auto 0 0;
+		width: 22px;
+		height: 100%;
+		min-width: 0;
+		padding: 8px 3px;
+		margin: 0;
+		border: 0;
+		border-right: 1px solid var(--background-modifier-border);
+		border-radius: 0;
+		box-shadow: none;
+		background: var(--background-secondary);
+		color: var(--text-muted);
+		writing-mode: vertical-rl;
+		text-orientation: upright;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		font-size: var(--font-ui-small);
+		cursor: grab;
+		z-index: 3;
+		touch-action: none;
+		&.is-active { background: var(--background-modifier-hover); color: var(--text-accent); }
+		&:focus-visible { outline: 1px solid var(--interactive-accent); outline-offset: -2px; }
+	}
+}
+.vt-fold-node.vt-fold-collapsed {
+	flex: 0 0 22px !important;
+	width: 22px !important;
+	max-width: 22px !important;
+	padding-left: 0 !important;
+	> :not(.vt-fold-bar) { display: none !important; }
+}
+.vt-fold-drop-before { box-shadow: inset 2px 0 var(--interactive-accent) !important; }
+.vt-fold-drop-after { box-shadow: inset -2px 0 var(--interactive-accent) !important; }

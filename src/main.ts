@@ -42,16 +42,19 @@ import { removeAllTabControlButtons } from "./services/TabControlButtons";
 import { ViewEphemeralState } from "obsidian-typings";
 import { localStorageService } from "./stores/LocalStorageService";
 import { registerNativeGroupVisibilityMenu } from "./services/NativeGroupVisibilityMenu";
+import { FoldingTabGroups } from "./services/FoldingTabGroups";
 
 export default class ObsidianVerticalTabs extends Plugin {
 	settings: Settings = DEFAULT_SETTINGS;
+	folding: FoldingTabGroups | null = null;
 
 	async onload() {
 		addIcon("vertical-tabs-custom", VERTICAL_TABS_ICON);
 		await this.loadSettings();
 		await this.setupLocalStorageService();
-		this.register(registerNativeGroupVisibilityMenu(this.app));
 		const disableOnThisDevice = loadDisableOnThisDevice();
+		if (Platform.isDesktop && !disableOnThisDevice) this.folding = new FoldingTabGroups(this);
+		this.register(registerNativeGroupVisibilityMenu(this.app, this.folding));
 		if (disableOnThisDevice) {
 			void useSettings.getState().loadSettings(this);
 			this.addSettingTab(
@@ -151,6 +154,7 @@ export default class ObsidianVerticalTabs extends Plugin {
 	}
 
 	onunload() {
+		this.folding?.dispose();
 		if (this.settings.enhancedKeyboardTabSwitch) {
 			useViewState.getState().resetViewCueCallback(this.app);
 		}
