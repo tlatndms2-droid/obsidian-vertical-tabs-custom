@@ -72,4 +72,16 @@ Final local artifact SHA-256:
 
 ## Delivery scope
 
+## 0.17.7-custom.5 shared space allocation (2026-09-21)
+
+- Reproduced on custom.4 with four open groups and saved dimensions 80/1/9/10: widths 1242/38/140.25/155.77px. The second group was open but had no content area.
+- Same layout on custom.5: 796/260/260/260px. Allocation reserves every 38px Bar, lifts small open groups to a 260px target, and shares equally when that target cannot fit. Remaining width follows saved proportions without rewriting preferences.
+- Four groups: eight fold/unfold actions passed with all bars visible and appropriate open widths. A 706px available workspace distributed four open groups at 176.5px each.
+- Added a fifth group; initial widths 315.2px each. A 40px native drag produced 355.22/275.17/315.2/315.2/315.2px. Folding and reopening preserved those widths. Every sampled animation frame kept all five bars at 38px and inside the workspace.
+- Normal quit/relaunch of Obsidian 1.13.7 preserved the five widths exactly and loaded custom.5. Icons and rotated titles compared visually; no captured page errors in the interaction pass.
+- Ten layout/allocation tests, TypeScript and production build passed. ESLint: zero errors, two existing warnings.
+- Built/installed files matched byte-for-byte. Evidence, backups, screenshots and SHA-256 records: C:/Users/tlatn/Documents/Codex/FoldingEvidence-20260921/custom5. Sandbox left open with five groups for review.
+
+## Delivery boundary
+
 Release asset re-download and BRAT installation/update checks are intentionally omitted at the user's request. User installation verification is separate from the local Sandbox results above.

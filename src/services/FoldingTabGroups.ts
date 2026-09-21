@@ -3,7 +3,7 @@ import { DEFAULT_GROUP_TITLE, useViewState } from "src/models/ViewState";
 import { localStorageService } from "src/stores/LocalStorageService";
 import { EVENTS } from "src/constants/Events";
 import { around } from "monkey-around";
-import { foldingRoots } from "./FoldingLayout";
+import { foldingRoots, foldingWidths } from "./FoldingLayout";
 
 type Node = Omit<WorkspaceParent, "children" | "type"> & {
 	type: string;
@@ -44,6 +44,7 @@ export class FoldingTabGroups {
 	private disposed = false;
 	private cleanup: Array<() => void> = [];
 	private documents = new Set<Document>();
+	private sizeObservers: ResizeObserver[] = [];
 
 	constructor(private plugin: Plugin) {
 		if (Platform.isMobile) return;
@@ -99,6 +100,8 @@ export class FoldingTabGroups {
 	}
 	private state(bundle: Bundle): FoldState { return this.states[bundle.key] ??= { collapsed: false }; }
 	private clearUI() {
+		for (const observer of this.sizeObservers) observer.disconnect();
+		this.sizeObservers = [];
 		for (const bundle of this.bundles) {
 			bundle.bar.remove();
 			bundle.node.containerEl.removeClass("vt-fold-node", "vt-fold-collapsed", "vt-fold-drop-before", "vt-fold-drop-after");
@@ -121,7 +124,7 @@ export class FoldingTabGroups {
 			for (const bundle of this.bundles) {
 				bundle.groups = this.groups(bundle.node);
 				this.updateBar(bundle);
-				bundle.node.containerEl.style.setProperty("--vt-fold-weight", String(this.weight(bundle.node)));
+				if (bundle.bar.ownerDocument.body.hasClass("vt-fold-resizing")) bundle.node.containerEl.style.setProperty("--vt-fold-weight", String(this.weight(bundle.node)));
 			}
 			this.apply(); return;
 		}
@@ -129,6 +132,13 @@ export class FoldingTabGroups {
 		for (const root of roots) {
 			const doc = root.containerEl.ownerDocument;
 			this.bindDocument(doc);
+			let lastWidth = root.containerEl.clientWidth;
+			const observer = new ResizeObserver(() => {
+				const width = root.containerEl.clientWidth;
+				if (width !== lastWidth) { lastWidth = width; this.schedule(); }
+			});
+			observer.observe(root.containerEl);
+			this.sizeObservers.push(observer);
 			for (const node of foldingRoots(root)) {
 				const groups = this.groups(node);
 				if (!groups.length) continue;
@@ -148,7 +158,6 @@ export class FoldingTabGroups {
 				bar.addEventListener("contextmenu", event => { event.preventDefault(); this.renameMenu(bundle, event); });
 				bar.addEventListener("pointerdown", event => this.drag(bundle, event));
 				node.containerEl.addClass("vt-fold-node");
-				node.containerEl.style.setProperty("--vt-fold-weight", String(this.weight(node)));
 				node.containerEl.appendChild(bar);
 				this.state(bundle);
 			}
@@ -160,6 +169,15 @@ export class FoldingTabGroups {
 	}
 	private apply() {
 		const active = this.plugin.app.workspace.getActiveViewOfType(View)?.leaf;
+		for (const root of new Set(this.bundles.map(bundle => bundle.root))) {
+			const siblings = this.bundles.filter(bundle => bundle.root === root);
+			if (root.containerEl.ownerDocument.body.hasClass("vt-fold-resizing")) continue;
+			const width = siblings[0]?.node.containerEl.parentElement?.clientWidth || root.containerEl.clientWidth;
+			const widths = foldingWidths(width, siblings.map(bundle => ({ dimension: bundle.node.dimension, collapsed: this.state(bundle).collapsed })));
+			for (let i = 0; i < siblings.length; i++) {
+				siblings[i]!.node.containerEl.style.setProperty("--vt-fold-weight", String(Math.max(0, widths[i]! - 38)));
+			}
+		}
 		for (const bundle of this.bundles) {
 			const collapsed = this.state(bundle).collapsed;
 			bundle.node.containerEl.toggleClass("vt-fold-collapsed", collapsed);
