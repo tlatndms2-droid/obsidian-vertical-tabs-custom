@@ -1,4 +1,4 @@
-import { App, Menu, Modal, Platform, Plugin, Setting, View, WorkspaceLeaf, WorkspaceParent } from "obsidian";
+import { App, Menu, Modal, Platform, Plugin, Setting, View, WorkspaceLeaf, WorkspaceParent, setIcon } from "obsidian";
 import { DEFAULT_GROUP_TITLE, useViewState } from "src/models/ViewState";
 import { localStorageService } from "src/stores/LocalStorageService";
 import { EVENTS } from "src/constants/Events";
@@ -87,6 +87,11 @@ export class FoldingTabGroups {
 		return node.type === "tabs" ? [node] : node.children.flatMap(child => this.groups(child));
 	}
 	private name(group: Node) { return useViewState.getState().groupTitles.get(group.id) || DEFAULT_GROUP_TITLE; }
+	private updateBar(bundle: Bundle) {
+		const name = bundle.groups.map(group => this.name(group)).join(" + ");
+		bundle.bar.querySelector(".vt-fold-title")!.textContent = name;
+		bundle.bar.setAttribute("aria-label", name);
+	}
 	private state(bundle: Bundle): FoldState { return this.states[bundle.key] ??= { collapsed: false }; }
 	private clearUI() {
 		for (const bundle of this.bundles) {
@@ -110,8 +115,7 @@ export class FoldingTabGroups {
 		})) {
 			for (const bundle of this.bundles) {
 				bundle.groups = this.groups(bundle.node);
-				bundle.bar.textContent = bundle.groups.map(group => this.name(group)).join(" + ");
-				bundle.bar.setAttribute("aria-label", bundle.bar.textContent);
+				this.updateBar(bundle);
 				bundle.node.containerEl.style.setProperty("--vt-fold-weight", String(bundle.node.dimension || 100));
 			}
 			this.apply(); return;
@@ -127,11 +131,14 @@ export class FoldingTabGroups {
 				const bar = doc.win.createEl("button");
 				bar.className = "vt-fold-bar";
 				bar.type = "button";
+				const icon = bar.createSpan({ cls: "vt-fold-icon" });
+				icon.setAttribute("aria-hidden", "true");
+				setIcon(icon, "copy");
+				bar.createSpan({ cls: "vt-fold-title" });
 				const bundle: Bundle = { root, node, groups, key, bar };
 				this.bundles.push(bundle);
 				// Screen order is the workspace tree's top-to-bottom / left-to-right order.
-				bar.textContent = groups.map(group => this.name(group)).join(" + ");
-				bar.setAttribute("aria-label", bar.textContent);
+				this.updateBar(bundle);
 				bar.addEventListener("click", () => this.toggle(bundle));
 				bar.addEventListener("contextmenu", event => { event.preventDefault(); this.renameMenu(bundle, event); });
 				bar.addEventListener("pointerdown", event => this.drag(bundle, event));
@@ -211,6 +218,11 @@ export class FoldingTabGroups {
 	private bindDocument(doc: Document) {
 		if (this.documents.has(doc)) return;
 		this.documents.add(doc);
+		const resized = (event: TransitionEvent) => {
+			if (event.propertyName === "flex-grow" && (event.target as HTMLElement)?.classList?.contains("vt-fold-node")) this.plugin.app.workspace.requestResize();
+		};
+		doc.addEventListener("transitionend", resized);
+		this.cleanup.push(() => doc.removeEventListener("transitionend", resized));
 		// Only the main window closing signifies application shutdown.
 		if (doc === this.plugin.app.workspace.containerEl.ownerDocument) {
 			const closing = () => { this.quitting = true; this.save(); };

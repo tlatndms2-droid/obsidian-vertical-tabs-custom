@@ -46,6 +46,17 @@ Final local artifact SHA-256:
 - manifest.json: 0B88CB167614B816324ED9B1E8A5397289B0C947F72632B7D4545C2FCAA01E85
 - styles.css: 909A1299B9190DED5D75E213105F03A444A208BC7091A7129DDBC5CB3145764E
 
-## Delivery boundary
+## 0.17.7-custom.3 design and motion validation (2026-09-21)
+
+- TypeScript, production build and six layout tests passed. ESLint: zero errors, two existing warnings.
+- Obsidian 1.13.7 isolated FoldingSandbox-20260921: actual Bar width 38px, icon 16px, rotated titles; screenshots compared with approved mockup.
+- Caption-button collision was found and corrected by positioning icon/title below the header. Collapsed rightmost icon now accepts clicks.
+- CDP pointer click exercised expansion and collapse. Recorded animation widths included 938, 856, 631, 301, 120, 72 and 38px instead of an instant jump.
+- Keyboard activation, reactivation during transition, last-expanded-bundle protection and reduced-motion 0s transition checked. No captured page errors during interaction checks.
+- Normal Sandbox process quit/relaunch preserved enabled mode, A expanded, B+C+D collapsed, icons and 38px bars on custom.3. Before/after snapshots matched exactly.
+- Evidence: custom3-before-restart.json, custom3-after-restart.json, custom3-collapsed.png, custom3-after-restart.png in the evidence directory above; pre-test workspace/data backup in custom3-before.
+- Final build/install SHA-256 matched: main.js A60F70C9FEAE3531441E49D364B4BF9C459BEA1519B30C4A42D2AD44939650F0; styles.css A471260ECCAA500861785B5545B178FB5F3C804BBA0A4CC402B49744A2AAB834; manifest.json F7717DA57F127FCE35C511DB93119A17F0C7043E32BD7EE3A5A0FD16FD92001A.
+
+## Delivery boundary (unchanged)
 
 Release asset re-download and BRAT installation/update checks are intentionally omitted at the user's request. User installation verification is separate from the local Sandbox results above.

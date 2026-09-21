@@ -1,15 +1,23 @@
 .vt-fold-node {
 	position: relative !important;
-	padding-left: 22px !important;
-	min-width: 22px !important;
-	&:not(.vt-fold-collapsed) { flex: var(--vt-fold-weight, 100) 1 0% !important; }
+	box-sizing: border-box;
+	padding-left: 38px !important;
+	min-width: 38px !important;
+	overflow: hidden;
+	flex: var(--vt-fold-weight, 100) 1 38px !important;
+	transition: flex-grow 240ms cubic-bezier(.4, 0, .2, 1);
 	> .vt-fold-bar {
 		position: absolute;
 		inset: 0 auto 0 0;
-		width: 22px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: flex-start;
+		gap: 14px;
+		width: 38px;
 		height: 100%;
 		min-width: 0;
-		padding: 8px 3px;
+		padding: calc(var(--header-height, 40px) + 14px) 0 14px;
 		margin: 0;
 		border: 0;
 		border-right: 1px solid var(--background-modifier-border);
@@ -17,25 +25,33 @@
 		box-shadow: none;
 		background: var(--background-secondary);
 		color: var(--text-muted);
-		writing-mode: vertical-rl;
-		text-orientation: upright;
-		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		font-size: var(--font-ui-small);
 		cursor: grab;
 		z-index: 3;
 		touch-action: none;
-		&.is-active { background: var(--background-modifier-hover); color: var(--text-accent); }
+		.vt-fold-icon { display: flex; flex: 0 0 16px; }
+		.vt-fold-icon svg { width: 16px; height: 16px; stroke-width: 1.6; }
+		.vt-fold-title {
+			writing-mode: vertical-rl;
+			text-orientation: sideways;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+		&.is-active { background: var(--background-primary); box-shadow: inset 2px 0 var(--interactive-accent); }
+		&:hover { background: var(--background-modifier-hover); }
 		&:focus-visible { outline: 1px solid var(--interactive-accent); outline-offset: -2px; }
 	}
 }
 .vt-fold-node.vt-fold-collapsed {
-	flex: 0 0 22px !important;
-	width: 22px !important;
-	max-width: 22px !important;
-	padding-left: 0 !important;
-	> :not(.vt-fold-bar) { display: none !important; }
+	flex-grow: 0 !important;
+	> :not(.vt-fold-bar) { visibility: hidden; transition: visibility 0s 240ms; pointer-events: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.vt-fold-node { transition: none; }
+	.vt-fold-node.vt-fold-collapsed > :not(.vt-fold-bar) { transition: none; }
 }
 .vt-fold-drop-before { box-shadow: inset 2px 0 var(--interactive-accent) !important; }
 .vt-fold-drop-after { box-shadow: inset -2px 0 var(--interactive-accent) !important; }
