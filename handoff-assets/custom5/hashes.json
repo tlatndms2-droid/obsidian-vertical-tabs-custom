@@ -1,0 +1,14 @@
+[
+  {
+    "name": "main.js",
+    "sha256": "a4d2592991a1bf402c165f7dcd26070606ebd10edc60da52d1febbdea04b4f43"
+  },
+  {
+    "name": "styles.css",
+    "sha256": "bc1e577ce27729c007b04422410bc334600bb4f0e0a168a1a0e6ba9d1f1d677f"
+  },
+  {
+    "name": "manifest.json",
+    "sha256": "e498857d90db954a198804c696ba558c43aeb94be40d264de9761d5fbfadc6f3"
+  }
+]

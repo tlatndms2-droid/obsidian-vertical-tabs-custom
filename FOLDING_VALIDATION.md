@@ -1,6 +1,8 @@
 # Folding Tab Group Mode validation
 
-Date: 2026-09-21. Final version: 0.17.7-custom.2.
+Date: 2026-09-21. Initial validation: 0.17.7-custom.2. Latest recorded validation: 0.17.7-custom.5 (see the versioned sections below).
+
+Cross-PC handoff: selected custom.5 evidence is included in [handoff-assets/custom5](handoff-assets/custom5/README.md). Absolute paths below refer to the original PC and are historical evidence locations, not prerequisites on a new PC. This handoff did not repeat the runtime checks.
 
 ## Automated checks
 

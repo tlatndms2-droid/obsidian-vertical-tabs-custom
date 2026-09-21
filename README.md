@@ -1,3 +1,11 @@
+# Vertical Tabs Custom — 프로젝트 인수인계
+
+현재 커스텀 버전: `0.17.7-custom.5`.
+다른 PC에서 이어서 작업하려면 [현재 상태와 남은 작업](HANDOFF.md), [새 PC 시작 안내](NEW_PC_START.md), [검증 기록](FOLDING_VALIDATION.md)을 먼저 읽으세요.
+최초 기획 자료는 [Planning Pack](Folding_Tab_Group_Planning_Pack.zip), 최신 검증 화면은 [handoff-assets/custom5](handoff-assets/custom5/README.md)에 있습니다.
+
+아래는 기반 프로젝트의 기존 안내입니다.
+
 # Vertical Tabs *for Obsidian*
 
 [Subscribe to the Beta Program](https://ko-fi.com/oxdcq) for exclusive early access to the latest updates!
