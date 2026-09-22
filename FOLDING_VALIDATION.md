@@ -113,3 +113,14 @@ Release asset re-download and BRAT installation/update checks are intentionally 
 - TypeScript, production build, ten layout tests and focused ESLint passed. Built and installed SHA-256 matched: main.js `142DC84EC64AB71A1E91D26205A17785A23F0217EFFC51ED5F1529CC02264009`; styles.css `6639A0CED4B29936C30CD35DE3F82E776E0EE685FFB8B6EDFA9BC4DD5BFD4E89`; manifest.json `AF71404103EF6325701760B8A3931842086876E15BA1B54AFC1A5029DA7548A1`.
 - Evidence in `C:/Users/tlatn/Documents/Codex/FoldingEvidence-20260921/`: custom7-performance-0.17.7-custom.6.json, custom7-performance-0.17.7-custom.7.json, custom7-checks.json, custom7-extra-checks.json, custom7-before-restart.json, custom7-after-restart.json and screenshots. Pre-test workspace/data backup retained in custom7-before/.
 - Existing release-asset re-download and BRAT verification exclusions remain in effect.
+
+## 0.17.7-custom.8 — choose a group from a shared Bar (2026-09-22)
+
+- Native pointer interaction verified the shared Bar's `그룹 닫기` submenu. Two groups sharing the default name displayed `1. Grouped tabs — C2` and `2. Grouped tabs — C1`, followed by a separated `전체 그룹` row. Screenshot compared with the requested native submenu style.
+- Choosing the upper group closed both of its tabs and retained the lower group's original leaf ID plus the outside A group. Choosing the lower group retained both upper tabs. `전체 그룹` removed only the shared bundle. The remaining single group's menu retained its direct close behavior.
+- A detached active leaf initially caused an error during immediate refresh after closing its group; the active-group lookup now tolerates its null parent. The complete pointer interaction suite then passed without captured runtime errors.
+- All five original Markdown files remained present. Tests changed only the isolated Sandbox layout; workspace/data backups retained in custom8-before/.
+- Normal process shutdown/relaunch loaded custom.8 and exactly retained selected-group removal, remaining group/leaf identities and file states. Idle folding refreshes: zero in 1.2s after restart. Sandbox remains open with outside A and lower C1 for review.
+- TypeScript, production build, ten existing layout tests and focused ESLint passed. Built/installed SHA-256 matched: main.js `FA1AE2FD2A4BD85082DCCD5226FFD2B9C256632420FEA166A4D57FC7A24274D9`; styles.css `6639A0CED4B29936C30CD35DE3F82E776E0EE685FFB8B6EDFA9BC4DD5BFD4E89`; manifest.json `ACCC3BFB89A1CCBE82443531818755F5022371625FF34425ABB43055D1D51673`.
+- Evidence: custom8-checks.json, custom8-submenu.png, custom8-before-restart.json, custom8-after-restart.json and custom8-after-restart.png in `C:/Users/tlatn/Documents/Codex/FoldingEvidence-20260921/`.
+- Release asset re-download and BRAT reinstall/update verification remain excluded by the existing delivery boundary.

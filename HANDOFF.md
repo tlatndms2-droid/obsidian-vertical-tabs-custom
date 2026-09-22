@@ -2,7 +2,16 @@
 
 Updated: 2026-09-22 (Asia/Seoul)
 
-## Latest update — 0.17.7-custom.7
+## Latest update — 0.17.7-custom.8
+
+- Shared Bar right-click → `그룹 닫기` now opens a submenu listing each native group in screen order, followed by a separator and `전체 그룹`. Each individual row contains its number, group name and current tab title so duplicate names are distinguishable.
+- Choosing one group closes only that group's tabs. Choosing `전체 그룹` closes all groups in that Bar's bundle. Single-group Bars retain the direct close action. No files are deleted.
+- Guarded the brief detached-active-leaf state encountered while closing a currently active group.
+- TypeScript, production build, ten existing tests and focused ESLint passed. Isolated Obsidian 1.13.7 pointer tests covered duplicate-name labels, upper/lower-only close, multi-tab selected group, all-in-bundle close, unaffected outside group, single-group direct close and source-file existence. Final interaction pass recorded no runtime errors.
+- Normal restart loaded custom.8 and exactly retained the selected-group removal plus every remaining group/tab. Idle refresh count remained zero over 1.2s. Evidence and backups: `C:/Users/tlatn/Documents/Codex/FoldingEvidence-20260921/custom8-*`. Sandbox is left open with the upper test group removed, lower C1 and outside A retained.
+- Delivery target: `0.17.7-custom.8`; existing exclusions for Release asset re-download and BRAT reinstall/update verification remain.
+
+## Previous update — 0.17.7-custom.7
 
 - Fixed folding's resize feedback loop: only group-title/visibility changes in the shared view store schedule folding refresh; identical geometry no longer requests another workspace resize. Unchanged Bar titles/attributes/weights are not rewritten. Disabled mode clears its UI only when needed.
 - Existing 240ms animation, Ctrl-click focus/restore, fixed sidebar toggle, group names, empty groups and manual divider resize behavior remain intact.
@@ -73,7 +82,7 @@ The following cross-PC handoff section is the historical custom.5 baseline.
 
 ## Current implementation
 
-- Version: 0.17.7-custom.7; plugin ID: vertical-tabs-custom.
+- Version: 0.17.7-custom.8; plugin ID: vertical-tabs-custom.
 - Adds desktop-only Folding Tab Group Mode to the existing native tab-list menu.
 - Existing native group Hide/Show implementation from custom.1 is retained.
 - Earlier statements that the custom implementation has not started are obsolete; history is available in Git.
@@ -112,5 +121,5 @@ The following cross-PC handoff section is the historical custom.5 baseline.
 - Final cold-start validation: Obsidian 1.13.7. Initial interaction checks also ran on 1.12.7.
 - Evidence: C:/Users/tlatn/Documents/Codex/FoldingEvidence-20260921
 - Leave the Sandbox open and its fixtures intact for user review. Do not modify the live Vault.
-- Delivery tag: 0.17.7-custom.7.
+- Delivery tag: 0.17.7-custom.8.
 - User explicitly requested stopping after GitHub Release creation. Do not re-download Release assets or run BRAT installation/update verification unless newly requested.

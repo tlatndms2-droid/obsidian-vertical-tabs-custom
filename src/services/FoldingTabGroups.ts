@@ -213,7 +213,8 @@ export class FoldingTabGroups {
 		this.save();
 	}
 	private apply() {
-		const active = this.plugin.app.workspace.getActiveViewOfType(View)?.leaf;
+		// Closing the active group can briefly leave the active leaf detached.
+		const activeGroup = this.plugin.app.workspace.getActiveViewOfType(View)?.leaf.parent?.id;
 		let geometryChanged = false;
 		for (const root of new Set(this.bundles.map(bundle => bundle.root))) {
 			const siblings = this.bundles.filter(bundle => bundle.root === root);
@@ -236,7 +237,7 @@ export class FoldingTabGroups {
 				geometryChanged = true;
 			}
 			if (bundle.bar.getAttribute("aria-expanded") !== String(!collapsed)) bundle.bar.setAttribute("aria-expanded", String(!collapsed));
-			bundle.bar.toggleClass("is-active", !!active && bundle.groups.some(group => group.id === active.parent.id));
+			bundle.bar.toggleClass("is-active", !!activeGroup && bundle.groups.some(group => group.id === activeGroup));
 		}
 		if (this.sidebarToggle) {
 			const collapsed = this.plugin.app.workspace.rightSplit.collapsed;
@@ -327,16 +328,31 @@ export class FoldingTabGroups {
 			else { const sub = item.setSubmenu(); for (const group of bundle.groups) sub.addItem(child => child.setTitle(this.name(group)).onClick(() => edit(group))); }
 		});
 		menu.addSeparator();
-		menu.addItem(item => item.setTitle("그룹 닫기").setIcon("x").onClick(() => {
-			this.closingGroup = true;
-			try {
-				const leaves = bundle.groups.flatMap(group => [...group.children] as unknown as WorkspaceLeaf[]);
-				for (const leaf of leaves) leaf.detach();
+		menu.addItem(item => {
+			item.setTitle("그룹 닫기").setIcon("x");
+			if (bundle.groups.length === 1) item.onClick(() => this.closeGroups(bundle.groups));
+			else {
+				const sub = item.setSubmenu();
+				bundle.groups.forEach((group, index) => {
+					const leaf = group.children[group.currentTab] as unknown as WorkspaceLeaf | undefined;
+					const tabTitle = leaf?.view.getDisplayText();
+					const title = `${index + 1}. ${this.name(group)}${tabTitle ? ` — ${tabTitle}` : ""}`;
+					sub.addItem(child => child.setTitle(title).setIcon("x").onClick(() => this.closeGroups([group])));
+				});
+				sub.addSeparator();
+				sub.addItem(child => child.setTitle("전체 그룹").setIcon("x").onClick(() => this.closeGroups(bundle.groups)));
 			}
-			finally { this.closingGroup = false; }
-			this.refresh();
-		}));
+		});
 		menu.showAtMouseEvent(event);
+	}
+	private closeGroups(groups: Node[]) {
+		this.closingGroup = true;
+		try {
+			const leaves = groups.flatMap(group => [...group.children] as unknown as WorkspaceLeaf[]);
+			for (const leaf of leaves) leaf.detach();
+		}
+		finally { this.closingGroup = false; }
+		this.refresh();
 	}
 	private bindDocument(doc: Document) {
 		if (this.documents.has(doc)) return;
