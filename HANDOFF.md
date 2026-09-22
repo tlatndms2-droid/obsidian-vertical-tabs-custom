@@ -2,7 +2,16 @@
 
 Updated: 2026-09-22 (Asia/Seoul)
 
-## Latest update — 0.17.7-custom.6
+## Latest update — 0.17.7-custom.7
+
+- Fixed folding's resize feedback loop: only group-title/visibility changes in the shared view store schedule folding refresh; identical geometry no longer requests another workspace resize. Unchanged Bar titles/attributes/weights are not rewritten. Disabled mode clears its UI only when needed.
+- Existing 240ms animation, Ctrl-click focus/restore, fixed sidebar toggle, group names, empty groups and manual divider resize behavior remain intact.
+- Same visible Sandbox and six native click operations: custom.6 had 14 idle refreshes in 1.2s, custom.7 had zero. Mean renderer TaskDuration in each 650ms sampling interval decreased from about 443ms to 302ms (about 32%). Frame timing still varies with app/system load; this is not a guarantee of zero dropped frames in other Vaults.
+- TypeScript, production build, ten existing tests and focused ESLint passed. Actual Sandbox clicks checked focus restore/widths, sidebar toggle, rename/restore and manual resize. Reduced-motion and disabled-mode checks passed. Normal process restart preserved group IDs/names/widths/fold states and empty D; 1.5s post-restart sampling found zero idle refreshes.
+- Sandbox remains open on custom.7. Evidence and backups are under `C:/Users/tlatn/Documents/Codex/FoldingEvidence-20260921/custom7-*`.
+- Delivery target: `0.17.7-custom.7`. Existing exclusion of Release asset re-download and BRAT reinstall/update verification remains in effect.
+
+## Previous update — 0.17.7-custom.6
 
 - Right sidebar toggle now lives in a dedicated 32px edge strip outside folding bundles, below the window caption controls. It remains clickable with the rightmost group collapsed and with the sidebar open or closed.
 - Ctrl-click a Bar to expand only that bundle; Ctrl-click the same Bar again to restore the previous open/collapsed layout and focus. Switching the Ctrl-click target retains the original restore layout. Ordinary Bar clicks, mode changes, or group structure changes clear the temporary restore snapshot; it is not persisted across application restarts.
@@ -64,7 +73,7 @@ The following cross-PC handoff section is the historical custom.5 baseline.
 
 ## Current implementation
 
-- Version: 0.17.7-custom.6; plugin ID: vertical-tabs-custom.
+- Version: 0.17.7-custom.7; plugin ID: vertical-tabs-custom.
 - Adds desktop-only Folding Tab Group Mode to the existing native tab-list menu.
 - Existing native group Hide/Show implementation from custom.1 is retained.
 - Earlier statements that the custom implementation has not started are obsolete; history is available in Git.
@@ -103,5 +112,5 @@ The following cross-PC handoff section is the historical custom.5 baseline.
 - Final cold-start validation: Obsidian 1.13.7. Initial interaction checks also ran on 1.12.7.
 - Evidence: C:/Users/tlatn/Documents/Codex/FoldingEvidence-20260921
 - Leave the Sandbox open and its fixtures intact for user review. Do not modify the live Vault.
-- Delivery tag: 0.17.7-custom.6.
+- Delivery tag: 0.17.7-custom.7.
 - User explicitly requested stopping after GitHub Release creation. Do not re-download Release assets or run BRAT installation/update verification unless newly requested.

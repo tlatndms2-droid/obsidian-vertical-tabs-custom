@@ -88,7 +88,20 @@ export class FoldingTabGroups {
 		plugin.registerEvent(workspace.on("window-open", () => this.schedule()));
 		plugin.registerEvent(workspace.on("window-close", () => this.schedule()));
 		plugin.registerEvent(workspace.on("quit", () => { this.quitting = true; this.save(); }));
-		this.cleanup.push(useViewState.subscribe(() => this.schedule()));
+		// Sidebar position labels also update this store after a workspace resize.
+		// Only group presentation changes should schedule folding work, otherwise
+		// apply -> resize -> sidebar labels -> store creates a permanent refresh loop.
+		const presentation = () => {
+			const state = useViewState.getState();
+			return JSON.stringify([Array.from(state.groupTitles), state.hiddenGroups]);
+		};
+		let lastPresentation = presentation();
+		this.cleanup.push(useViewState.subscribe(() => {
+			const next = presentation();
+			if (next === lastPresentation) return;
+			lastPresentation = next;
+			this.schedule();
+		}));
 		workspace.onLayoutReady(() => { if (!this.disposed) this.refresh(); });
 	}
 	setEnabled(enabled: boolean) {
@@ -118,8 +131,9 @@ export class FoldingTabGroups {
 	}
 	private updateBar(bundle: Bundle) {
 		const name = bundle.groups.map(group => this.name(group)).join(" + ");
-		bundle.bar.querySelector(".vt-fold-title")!.textContent = name;
-		bundle.bar.setAttribute("aria-label", name);
+		const title = bundle.bar.querySelector(".vt-fold-title")!;
+		if (title.textContent !== name) title.textContent = name;
+		if (bundle.bar.getAttribute("aria-label") !== name) bundle.bar.setAttribute("aria-label", name);
 	}
 	private state(bundle: Bundle): FoldState { return this.states[bundle.key] ??= { collapsed: false }; }
 	private clearUI() {
@@ -139,7 +153,10 @@ export class FoldingTabGroups {
 		if (this.disposed) return;
 		const workspace = this.plugin.app.workspace;
 		if (!workspace.layoutReady) return;
-		if (!this.enabled) { this.clearUI(); workspace.requestResize(); return; }
+		if (!this.enabled) {
+			if (this.bundles.length || this.sidebarToggle) { this.clearUI(); workspace.requestResize(); }
+			return;
+		}
 		const roots = new Set<Node>([workspace.rootSplit as unknown as Node]);
 		for (const root of workspace.floatingSplit?.children ?? []) roots.add(root as unknown as Node);
 		const nodes = [...roots].flatMap(root => foldingRoots(root));
@@ -197,19 +214,28 @@ export class FoldingTabGroups {
 	}
 	private apply() {
 		const active = this.plugin.app.workspace.getActiveViewOfType(View)?.leaf;
+		let geometryChanged = false;
 		for (const root of new Set(this.bundles.map(bundle => bundle.root))) {
 			const siblings = this.bundles.filter(bundle => bundle.root === root);
 			if (root.containerEl.ownerDocument.body.hasClass("vt-fold-resizing")) continue;
 			const width = this.contentWidth(siblings[0]?.node.containerEl.parentElement ?? root.containerEl);
 			const widths = foldingWidths(width, siblings.map(bundle => ({ dimension: bundle.node.dimension, collapsed: this.state(bundle).collapsed })));
 			for (let i = 0; i < siblings.length; i++) {
-				siblings[i]!.node.containerEl.style.setProperty("--vt-fold-weight", String(Math.max(0, widths[i]! - 38)));
+				const style = siblings[i]!.node.containerEl.style;
+				const weight = String(Math.max(0, widths[i]! - 38));
+				if (style.getPropertyValue("--vt-fold-weight") !== weight) {
+					style.setProperty("--vt-fold-weight", weight);
+					geometryChanged = true;
+				}
 			}
 		}
 		for (const bundle of this.bundles) {
 			const collapsed = this.state(bundle).collapsed;
-			bundle.node.containerEl.toggleClass("vt-fold-collapsed", collapsed);
-			bundle.bar.setAttribute("aria-expanded", String(!collapsed));
+			if (bundle.node.containerEl.hasClass("vt-fold-collapsed") !== collapsed) {
+				bundle.node.containerEl.toggleClass("vt-fold-collapsed", collapsed);
+				geometryChanged = true;
+			}
+			if (bundle.bar.getAttribute("aria-expanded") !== String(!collapsed)) bundle.bar.setAttribute("aria-expanded", String(!collapsed));
 			bundle.bar.toggleClass("is-active", !!active && bundle.groups.some(group => group.id === active.parent.id));
 		}
 		if (this.sidebarToggle) {
@@ -217,7 +243,7 @@ export class FoldingTabGroups {
 			this.sidebarToggle.setAttribute("aria-label", collapsed ? "오른쪽 사이드바 열기" : "오른쪽 사이드바 닫기");
 			this.sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
 		}
-		this.plugin.app.workspace.requestResize();
+		if (geometryChanged) this.plugin.app.workspace.requestResize();
 	}
 	private createSidebarToggle() {
 		const workspace = this.plugin.app.workspace, root = workspace.rootSplit.containerEl;

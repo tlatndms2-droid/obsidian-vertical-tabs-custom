@@ -100,3 +100,16 @@ Release asset re-download and BRAT installation/update checks are intentionally 
 - Ten existing tests, TypeScript, production build and focused ESLint passed. The two existing full-project warnings are unrelated to this change.
 - Evidence: `custom6-checks.json`, `custom6-edge-checks.json`, `custom6-before-restart.json`, `custom6-after-restart.json`, and associated screenshots in `C:/Users/tlatn/Documents/Codex/FoldingEvidence-20260921/`. Original workspace/data backups retained in `custom6-before/`.
 - Release asset re-download and BRAT reinstall/update verification remain intentionally excluded by the existing delivery boundary.
+
+## 0.17.7-custom.7 — stop animation resize feedback (2026-09-22)
+
+- Diagnosis traced the cycle: folding apply requests workspace resize → NavigationContainer refreshes sidebar toggles → ViewState updates position labels → folding's broad store subscription schedules refresh → apply requests resize again.
+- The fix limits the store subscription to group titles/hidden groups, requests resize only after geometry changes, skips unchanged Bar/weight writes and avoids repeated UI cleanup/resize when the mode is already off.
+- Compared the installed custom.6 and final custom.7 on the same visible Sandbox, original layout and six native C-bar clicks (three open/close pairs), collecting frame timing and CDP renderer metrics over 650ms per click. A minimized-window trial was discarded because animation frames were not produced.
+- Idle folding refreshes over 1.2s: custom.6 = 14, custom.7 = 0. Mean renderer TaskDuration per sample: approximately 443ms → 302ms (32% lower); ScriptDuration approximately 132ms → 73ms. These are local Sandbox measurements, not a universal FPS guarantee.
+- Native pointer UI checks passed: normal fold/unfold, Ctrl-only focus and exact prior width/fold restoration, sidebar toggle, native rename dialog and restored title, actual divider width change and persistence after release. Reduced-motion expansion/collapse and mode-off cleanup also passed. No captured runtime errors in the main UI pass.
+- Native resize was checked with adjacent expanded columns and sufficient window width; the initial crowded/adjacent-collapsed trial did not move the divider and was not counted as a successful resize test.
+- Normal Sandbox process close/relaunch yielded a new target, loaded custom.7, and exactly preserved IDs, names, fold states, pixel widths and empty D. Post-restart idle sampling: zero refreshes in 1.5s. Final screenshot inspected; fixed toggle and Bars remain visible. Sandbox is left open.
+- TypeScript, production build, ten layout tests and focused ESLint passed. Built and installed SHA-256 matched: main.js `142DC84EC64AB71A1E91D26205A17785A23F0217EFFC51ED5F1529CC02264009`; styles.css `6639A0CED4B29936C30CD35DE3F82E776E0EE685FFB8B6EDFA9BC4DD5BFD4E89`; manifest.json `AF71404103EF6325701760B8A3931842086876E15BA1B54AFC1A5029DA7548A1`.
+- Evidence in `C:/Users/tlatn/Documents/Codex/FoldingEvidence-20260921/`: custom7-performance-0.17.7-custom.6.json, custom7-performance-0.17.7-custom.7.json, custom7-checks.json, custom7-extra-checks.json, custom7-before-restart.json, custom7-after-restart.json and screenshots. Pre-test workspace/data backup retained in custom7-before/.
+- Existing release-asset re-download and BRAT verification exclusions remain in effect.
