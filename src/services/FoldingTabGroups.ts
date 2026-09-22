@@ -45,6 +45,9 @@ export class FoldingTabGroups {
 	private cleanup: Array<() => void> = [];
 	private documents = new Set<Document>();
 	private sizeObservers: ResizeObserver[] = [];
+	private focusLayouts = new Map<Node, { target: string; states: Map<string, boolean>; active?: WorkspaceLeaf }>();
+	private closingGroup = false;
+	private sidebarToggle?: HTMLButtonElement;
 
 	constructor(private plugin: Plugin) {
 		if (Platform.isMobile) return;
@@ -56,6 +59,20 @@ export class FoldingTabGroups {
 			}
 		}
 		const workspace = plugin.app.workspace;
+		const keepLastLeaf = (leaf: WorkspaceLeaf) => this.enabled && !this.disposed && !this.quitting && !this.closingGroup &&
+			leaf.parent?.children.length === 1 && this.bundles.some(bundle => bundle.groups.some(group => group.id === leaf.parent.id));
+		this.cleanup.push(around(WorkspaceLeaf.prototype, {
+			detach(old) {
+				return function (this: WorkspaceLeaf) {
+					if (keepLastLeaf(this)) {
+						// Reuse the last native leaf so the group's identity, name and position survive.
+						if (this.view.getViewType() !== "empty") void this.setViewState({ type: "empty", state: {} });
+						return;
+					}
+					return old.call(this);
+				};
+			},
+		}));
 		const activate = (leaf: WorkspaceLeaf) => this.activate(leaf);
 		this.cleanup.push(around(workspace, {
 			setActiveLeaf(old) {
@@ -75,6 +92,7 @@ export class FoldingTabGroups {
 		workspace.onLayoutReady(() => { if (!this.disposed) this.refresh(); });
 	}
 	setEnabled(enabled: boolean) {
+		this.focusLayouts.clear();
 		this.enabled = enabled;
 		this.refresh();
 		this.save();
@@ -90,8 +108,13 @@ export class FoldingTabGroups {
 	private name(group: Node) { return useViewState.getState().groupTitles.get(group.id) || DEFAULT_GROUP_TITLE; }
 	private weight(node: Node) {
 		// Native dimensions include the Bar; flex distributes only the space after it.
-		const parentWidth = node.containerEl.parentElement?.clientWidth || 0;
+		const parentWidth = this.contentWidth(node.containerEl.parentElement);
 		return parentWidth && node.dimension ? Math.max(0, parentWidth * node.dimension / 100 - 38) : 100;
+	}
+	private contentWidth(element: HTMLElement | null) {
+		if (!element) return 0;
+		const style = element.ownerDocument.defaultView!.getComputedStyle(element);
+		return element.clientWidth - parseFloat(style.paddingLeft || "0") - parseFloat(style.paddingRight || "0");
 	}
 	private updateBar(bundle: Bundle) {
 		const name = bundle.groups.map(group => this.name(group)).join(" + ");
@@ -100,6 +123,9 @@ export class FoldingTabGroups {
 	}
 	private state(bundle: Bundle): FoldState { return this.states[bundle.key] ??= { collapsed: false }; }
 	private clearUI() {
+		this.sidebarToggle?.remove();
+		this.sidebarToggle = undefined;
+		this.plugin.app.workspace.rootSplit.containerEl.removeClass("vt-fold-sidebar-host");
 		for (const observer of this.sizeObservers) observer.disconnect();
 		this.sizeObservers = [];
 		for (const bundle of this.bundles) {
@@ -115,7 +141,7 @@ export class FoldingTabGroups {
 		if (!workspace.layoutReady) return;
 		if (!this.enabled) { this.clearUI(); workspace.requestResize(); return; }
 		const roots = new Set<Node>([workspace.rootSplit as unknown as Node]);
-		for (const root of workspace.floatingSplit.children) roots.add(root as unknown as Node);
+		for (const root of workspace.floatingSplit?.children ?? []) roots.add(root as unknown as Node);
 		const nodes = [...roots].flatMap(root => foldingRoots(root));
 		if (nodes.length === this.bundles.length && nodes.every((node, index) => {
 			const bundle = this.bundles[index]!;
@@ -129,6 +155,7 @@ export class FoldingTabGroups {
 			this.apply(); return;
 		}
 		this.clearUI();
+		this.focusLayouts.clear();
 		for (const root of roots) {
 			const doc = root.containerEl.ownerDocument;
 			this.bindDocument(doc);
@@ -154,7 +181,7 @@ export class FoldingTabGroups {
 				this.bundles.push(bundle);
 				// Screen order is the workspace tree's top-to-bottom / left-to-right order.
 				this.updateBar(bundle);
-				bar.addEventListener("click", () => this.toggle(bundle));
+				bar.addEventListener("click", event => event.ctrlKey ? this.focusBundle(bundle) : this.toggle(bundle));
 				bar.addEventListener("contextmenu", event => { event.preventDefault(); this.renameMenu(bundle, event); });
 				bar.addEventListener("pointerdown", event => this.drag(bundle, event));
 				node.containerEl.addClass("vt-fold-node");
@@ -164,6 +191,7 @@ export class FoldingTabGroups {
 			const siblings = this.bundles.filter(bundle => bundle.root === root);
 			if (siblings.length && siblings.every(bundle => this.state(bundle).collapsed)) this.state(siblings[0]!).collapsed = false;
 		}
+		this.createSidebarToggle();
 		this.apply();
 		this.save();
 	}
@@ -172,7 +200,7 @@ export class FoldingTabGroups {
 		for (const root of new Set(this.bundles.map(bundle => bundle.root))) {
 			const siblings = this.bundles.filter(bundle => bundle.root === root);
 			if (root.containerEl.ownerDocument.body.hasClass("vt-fold-resizing")) continue;
-			const width = siblings[0]?.node.containerEl.parentElement?.clientWidth || root.containerEl.clientWidth;
+			const width = this.contentWidth(siblings[0]?.node.containerEl.parentElement ?? root.containerEl);
 			const widths = foldingWidths(width, siblings.map(bundle => ({ dimension: bundle.node.dimension, collapsed: this.state(bundle).collapsed })));
 			for (let i = 0; i < siblings.length; i++) {
 				siblings[i]!.node.containerEl.style.setProperty("--vt-fold-weight", String(Math.max(0, widths[i]! - 38)));
@@ -184,7 +212,42 @@ export class FoldingTabGroups {
 			bundle.bar.setAttribute("aria-expanded", String(!collapsed));
 			bundle.bar.toggleClass("is-active", !!active && bundle.groups.some(group => group.id === active.parent.id));
 		}
+		if (this.sidebarToggle) {
+			const collapsed = this.plugin.app.workspace.rightSplit.collapsed;
+			this.sidebarToggle.setAttribute("aria-label", collapsed ? "오른쪽 사이드바 열기" : "오른쪽 사이드바 닫기");
+			this.sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+		}
 		this.plugin.app.workspace.requestResize();
+	}
+	private createSidebarToggle() {
+		const workspace = this.plugin.app.workspace, root = workspace.rootSplit.containerEl;
+		root.addClass("vt-fold-sidebar-host");
+		const button = root.ownerDocument.win.createEl("button");
+		button.type = "button";
+		button.className = "vt-fold-sidebar-toggle clickable-icon";
+		setIcon(button, "panel-right");
+		button.addEventListener("click", () => { workspace.rightSplit.toggle(); this.schedule(); });
+		root.appendChild(button);
+		this.sidebarToggle = button;
+	}
+	private focusBundle(bundle: Bundle) {
+		const workspace = this.plugin.app.workspace;
+		const siblings = this.bundles.filter(item => item.root === bundle.root);
+		const saved = this.focusLayouts.get(bundle.root);
+		if (saved?.target === bundle.key) {
+			for (const item of siblings) this.state(item).collapsed = saved.states.get(item.key) ?? false;
+			this.focusLayouts.delete(bundle.root);
+			this.changingFocus = true;
+			try { if (saved.active?.containerEl.isConnected) workspace.setActiveLeaf(saved.active, { focus: true }); }
+			finally { this.changingFocus = false; }
+		} else {
+			if (saved) saved.target = bundle.key;
+			else this.focusLayouts.set(bundle.root, { target: bundle.key, states: new Map(siblings.map(item => [item.key, this.state(item).collapsed])), active: workspace.getActiveViewOfType(View)?.leaf });
+			for (const item of siblings) this.state(item).collapsed = item !== bundle;
+			const target = this.leaf(bundle);
+			if (target) workspace.setActiveLeaf(target, { focus: true });
+		}
+		this.apply(); this.save();
 	}
 	private leaf(bundle: Bundle): WorkspaceLeaf | undefined {
 		const state = this.state(bundle), hidden = useViewState.getState().hiddenGroups;
@@ -192,6 +255,7 @@ export class FoldingTabGroups {
 		return leaves.find(leaf => leaf.id === state.lastLeaf) ?? leaves[0];
 	}
 	private toggle(bundle: Bundle) {
+		this.focusLayouts.delete(bundle.root);
 		const state = this.state(bundle), workspace = this.plugin.app.workspace;
 		if (!state.collapsed) {
 			const others = this.bundles.filter(other => other.root === bundle.root && other !== bundle && !this.state(other).collapsed);
@@ -236,6 +300,16 @@ export class FoldingTabGroups {
 			if (bundle.groups.length === 1) item.onClick(() => edit(bundle.groups[0]!));
 			else { const sub = item.setSubmenu(); for (const group of bundle.groups) sub.addItem(child => child.setTitle(this.name(group)).onClick(() => edit(group))); }
 		});
+		menu.addSeparator();
+		menu.addItem(item => item.setTitle("그룹 닫기").setIcon("x").onClick(() => {
+			this.closingGroup = true;
+			try {
+				const leaves = bundle.groups.flatMap(group => [...group.children] as unknown as WorkspaceLeaf[]);
+				for (const leaf of leaves) leaf.detach();
+			}
+			finally { this.closingGroup = false; }
+			this.refresh();
+		}));
 		menu.showAtMouseEvent(event);
 	}
 	private bindDocument(doc: Document) {

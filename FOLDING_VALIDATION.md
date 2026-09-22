@@ -87,3 +87,16 @@ Final local artifact SHA-256:
 ## Delivery boundary
 
 Release asset re-download and BRAT installation/update checks are intentionally omitted at the user's request. User installation verification is separate from the local Sandbox results above.
+
+## 0.17.7-custom.6 — edge toggle, focus restore and retained empty groups (2026-09-22)
+
+- Dedicated right sidebar toggle: native CDP mouse clicks opened and closed the sidebar while the rightmost bundle remained collapsed. The toggle returned to the same boundary position. A caption-button overlap was found and corrected by moving the toggle below the header controls; hit-testing and screenshots verified it unobstructed.
+- Ctrl-click C left only C expanded; repeating restored the prior open/collapsed layout and widths within 1px. Ctrl-click B → C → C restored the same original layout. Nested shared bundles also passed focus/restore.
+- Closing D's final file via its native tab close button retained D's ID, name, order and native empty view. Closing the empty tab again retained D. Nested last-tab close retained its real subgroup.
+- Bar context menu `그룹 닫기` removed only the chosen bundle. Closing the final named group produced Obsidian's fresh default empty group. An eager fallback call caused `No tab group found`; removing the redundant creation call fixed it. Final UI and edge-case passes captured no errors.
+- Mode-off removed the added dock, bars and host styling and restored the native sidebar toggle. The sole remaining bundle cannot collapse.
+- Normal process shutdown and relaunch produced a new CDP target on port 19371, loaded custom.6, and exactly preserved mode, group IDs/names/order, pixel widths, fold states and empty D. After restart, the edge toggle opened the sidebar with D still collapsed.
+- Source and installed SHA-256 matched: main.js `872E6ED380A7CD27C63D5DC5EFD956F91B14D8D2B9B0C9C1EC73F93E4E6E3514`; styles.css `6639A0CED4B29936C30CD35DE3F82E776E0EE685FFB8B6EDFA9BC4DD5BFD4E89`; manifest.json `1FAA6C20770DE380391DE7DBD4CD33FDC89B410DC42D196A845BA0D988D08FEB`.
+- Ten existing tests, TypeScript, production build and focused ESLint passed. The two existing full-project warnings are unrelated to this change.
+- Evidence: `custom6-checks.json`, `custom6-edge-checks.json`, `custom6-before-restart.json`, `custom6-after-restart.json`, and associated screenshots in `C:/Users/tlatn/Documents/Codex/FoldingEvidence-20260921/`. Original workspace/data backups retained in `custom6-before/`.
+- Release asset re-download and BRAT reinstall/update verification remain intentionally excluded by the existing delivery boundary.

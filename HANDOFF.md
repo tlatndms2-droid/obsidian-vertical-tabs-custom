@@ -1,6 +1,19 @@
 # Vertical Tabs Custom — current handoff
 
-Updated: 2026-09-21 (Asia/Seoul)
+Updated: 2026-09-22 (Asia/Seoul)
+
+## Latest update — 0.17.7-custom.6
+
+- Right sidebar toggle now lives in a dedicated 32px edge strip outside folding bundles, below the window caption controls. It remains clickable with the rightmost group collapsed and with the sidebar open or closed.
+- Ctrl-click a Bar to expand only that bundle; Ctrl-click the same Bar again to restore the previous open/collapsed layout and focus. Switching the Ctrl-click target retains the original restore layout. Ordinary Bar clicks, mode changes, or group structure changes clear the temporary restore snapshot; it is not persisted across application restarts.
+- Closing the last tab keeps the native group identity, title and location, with Obsidian's native New tab view. Closing that empty tab also keeps the group. Applies only while Folding mode is enabled.
+- Bar right-click → `그룹 닫기` explicitly closes the bundle's tabs and removes its groups, without deleting files. Closing the final named bundle leaves Obsidian's fresh default group. Shared Bars close all their contained native groups.
+- Verified custom.6 in isolated Obsidian 1.13.7 Sandbox, including native pointer clicks, nested groups, final-group close, mode-off cleanup, and normal process restart. Exact group IDs, names, widths, fold states and the empty tab survived restart. No captured errors in the final interaction passes.
+- Ten existing layout tests, TypeScript, production build and focused ESLint passed. Full ESLint initially identified issues in this change; these were corrected and focused ESLint passed. The two known pre-existing warnings remain outside the changed file.
+- Evidence: `C:/Users/tlatn/Documents/Codex/FoldingEvidence-20260921/custom6-*.json` and `.png`. Pre-test workspace/data backups: `custom6-before/`. Sandbox remains open, with D empty and collapsed and the right sidebar open.
+- Delivery target: `0.17.7-custom.6`. Existing boundary retained: no Release asset re-download or BRAT reinstall/update verification.
+
+The following cross-PC handoff section is the historical custom.5 baseline.
 
 ## 다른 PC에서 이어받기 — 먼저 읽기
 
@@ -51,7 +64,7 @@ Updated: 2026-09-21 (Asia/Seoul)
 
 ## Current implementation
 
-- Version: 0.17.7-custom.5; plugin ID: vertical-tabs-custom.
+- Version: 0.17.7-custom.6; plugin ID: vertical-tabs-custom.
 - Adds desktop-only Folding Tab Group Mode to the existing native tab-list menu.
 - Existing native group Hide/Show implementation from custom.1 is retained.
 - Earlier statements that the custom implementation has not started are obsolete; history is available in Git.
@@ -90,5 +103,5 @@ Updated: 2026-09-21 (Asia/Seoul)
 - Final cold-start validation: Obsidian 1.13.7. Initial interaction checks also ran on 1.12.7.
 - Evidence: C:/Users/tlatn/Documents/Codex/FoldingEvidence-20260921
 - Leave the Sandbox open and its fixtures intact for user review. Do not modify the live Vault.
-- Delivery tag: 0.17.7-custom.5.
+- Delivery tag: 0.17.7-custom.6.
 - User explicitly requested stopping after GitHub Release creation. Do not re-download Release assets or run BRAT installation/update verification unless newly requested.

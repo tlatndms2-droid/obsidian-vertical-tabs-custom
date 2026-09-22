@@ -60,3 +60,23 @@
 }
 .vt-fold-drop-before { box-shadow: inset 2px 0 var(--interactive-accent) !important; }
 .vt-fold-drop-after { box-shadow: inset -2px 0 var(--interactive-accent) !important; }
+
+// A dedicated edge control stays outside every folding bundle.
+.vt-fold-sidebar-host {
+	position: relative;
+	padding-right: 32px;
+	> .vt-fold-sidebar-toggle {
+		position: absolute;
+		top: var(--header-height, 40px);
+		right: 0;
+		width: 32px;
+		height: var(--header-height, 40px);
+		padding: 6px;
+		margin: 0;
+		border: 0;
+		box-shadow: none;
+		z-index: 5;
+		-webkit-app-region: no-drag;
+	}
+}
+.workspace:has(.vt-fold-sidebar-host) .sidebar-toggle-button.mod-right { display: none; }
