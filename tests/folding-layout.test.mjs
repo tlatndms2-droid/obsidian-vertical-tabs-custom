@@ -50,3 +50,18 @@ test("zero saved weights still open and repeated allocation does not mutate pref
   assert.deepEqual(foldingWidths(1000, items), [260, 260, 480]);
   assert.equal(JSON.stringify(items), before);
 });
+
+test("manual 200px width survives tab activation allocation", () => {
+  const widths = foldingWidths(948, [200, 748].map(w => ({ dimension: w / 948 * 100, collapsed: false, manualWidth: true })));
+  widths.forEach((w, i) => assert.ok(Math.abs(w - [200, 748][i]) < 0.001));
+});
+test("manual allocation retains exact widths across three collapsed bars", () => {
+  const expected = [374, 38, 38, 38, 460];
+  const widths = foldingWidths(948, expected.map((w, i) => ({ dimension: w / 948 * 100, collapsed: i > 0 && i < 4, manualWidth: true })));
+  widths.forEach((w, i) => assert.ok(Math.abs(w - expected[i]) < 0.001));
+});
+test("manual minimum and automatic opening minimum coexist", () => {
+  const widths = foldingWidths(1000, [{ dimension: 20, collapsed: false, manualWidth: true }, { dimension: 1, collapsed: false }, { dimension: 79, collapsed: false }]);
+  assert.equal(widths[0], 200); assert.equal(widths[1], 260);
+  assert.ok(Math.abs(widths.reduce((a,b)=>a+b,0)-1000)<0.001);
+});

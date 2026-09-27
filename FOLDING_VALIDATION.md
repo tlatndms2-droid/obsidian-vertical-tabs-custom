@@ -124,3 +124,11 @@ Release asset re-download and BRAT installation/update checks are intentionally 
 - TypeScript, production build, ten existing layout tests and focused ESLint passed. Built/installed SHA-256 matched: main.js `FA1AE2FD2A4BD85082DCCD5226FFD2B9C256632420FEA166A4D57FC7A24274D9`; styles.css `6639A0CED4B29936C30CD35DE3F82E776E0EE685FFB8B6EDFA9BC4DD5BFD4E89`; manifest.json `ACCC3BFB89A1CCBE82443531818755F5022371625FF34425ABB43055D1D51673`.
 - Evidence: custom8-checks.json, custom8-submenu.png, custom8-before-restart.json, custom8-after-restart.json and custom8-after-restart.png in `C:/Users/tlatn/Documents/Codex/FoldingEvidence-20260921/`.
 - Release asset re-download and BRAT reinstall/update verification remain excluded by the existing delivery boundary.
+# 2026-09-27 — custom.9 pointer-aligned resize
+
+- Regression reproduced on custom.8: with three collapsed bars, shrinking 574px to 374px rebounded to about 544px; a manual 200px width rebounded to 260px on tab activation.
+- custom.9: 12 pointer samples across a 200px leftward drag agreed within 1px; held/released widths agreed within 1px. Collapsed bars stayed 38px; the other expanded group received the released width. Screenshots confirmed no blank layout gap.
+- Passed CDP pointer tests: tab activation, 200px clamp/retention, rightward resize, expanding/collapsing an intervening group, Escape rollback, three-open-group nearest-pair-only resize. The first three-open test attempted movement past the minimum; corrected the test direction and verified both affected widths and the unchanged third width.
+- Thirteen unit tests, TypeScript, production build and focused ESLint passed; no captured runtime errors; zero idle refreshes in 1.2s.
+- Normal Sandbox restart loaded custom.9 and retained IDs, widths within 1px, fold state and manual-width flags. Installed assets hash-match the build.
+- Evidence and backups: `C:/Users/tlatn/Documents/Codex/ResizeEvidence-20260927/custom9-*`. Sandbox left open; real Vault untouched. Release download/BRAT reinstall remain excluded per HANDOFF.

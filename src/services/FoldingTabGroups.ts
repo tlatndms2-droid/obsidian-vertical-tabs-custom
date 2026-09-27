@@ -12,7 +12,7 @@ type Node = Omit<WorkspaceParent, "children" | "type"> & {
 	dimension?: number;
 	insertChild(index: number, child: Node): void;
 };
-type FoldState = { collapsed: boolean; lastLeaf?: string };
+type FoldState = { collapsed: boolean; lastLeaf?: string; manualWidth?: boolean };
 type Saved = { enabled: boolean; bundles: Record<string, FoldState> };
 type Bundle = { node: Node; root: Node; groups: Node[]; key: string; bar: HTMLButtonElement };
 const STORAGE = "vertical-tabs-custom:folding-v1";
@@ -48,6 +48,7 @@ export class FoldingTabGroups {
 	private focusLayouts = new Map<Node, { target: string; states: Map<string, boolean>; active?: WorkspaceLeaf }>();
 	private closingGroup = false;
 	private sidebarToggle?: HTMLButtonElement;
+	private cancelResize?: () => void;
 
 	constructor(private plugin: Plugin) {
 		if (Platform.isMobile) return;
@@ -105,6 +106,7 @@ export class FoldingTabGroups {
 		workspace.onLayoutReady(() => { if (!this.disposed) this.refresh(); });
 	}
 	setEnabled(enabled: boolean) {
+		this.cancelResize?.();
 		this.focusLayouts.clear();
 		this.enabled = enabled;
 		this.refresh();
@@ -137,6 +139,7 @@ export class FoldingTabGroups {
 	}
 	private state(bundle: Bundle): FoldState { return this.states[bundle.key] ??= { collapsed: false }; }
 	private clearUI() {
+		this.cancelResize?.();
 		this.sidebarToggle?.remove();
 		this.sidebarToggle = undefined;
 		this.plugin.app.workspace.rootSplit.containerEl.removeClass("vt-fold-sidebar-host");
@@ -151,6 +154,7 @@ export class FoldingTabGroups {
 	}
 	private refresh() {
 		if (this.disposed) return;
+		if (this.cancelResize) return;
 		const workspace = this.plugin.app.workspace;
 		if (!workspace.layoutReady) return;
 		if (!this.enabled) {
@@ -220,7 +224,7 @@ export class FoldingTabGroups {
 			const siblings = this.bundles.filter(bundle => bundle.root === root);
 			if (root.containerEl.ownerDocument.body.hasClass("vt-fold-resizing")) continue;
 			const width = this.contentWidth(siblings[0]?.node.containerEl.parentElement ?? root.containerEl);
-			const widths = foldingWidths(width, siblings.map(bundle => ({ dimension: bundle.node.dimension, collapsed: this.state(bundle).collapsed })));
+			const widths = foldingWidths(width, siblings.map(bundle => ({ dimension: bundle.node.dimension, collapsed: this.state(bundle).collapsed, manualWidth: this.state(bundle).manualWidth })));
 			for (let i = 0; i < siblings.length; i++) {
 				const style = siblings[i]!.node.containerEl.style;
 				const weight = String(Math.max(0, widths[i]! - 38));
@@ -372,6 +376,14 @@ export class FoldingTabGroups {
 		const startResize = (event: PointerEvent) => {
 			if (!this.enabled || event.button !== 0) return;
 			const target = event.target as HTMLElement;
+			const handle = target.closest(".workspace-leaf-resize-handle");
+			const bundle = this.bundles.find(item => item.node.containerEl === handle?.parentElement);
+			if (bundle && bundle.node !== bundle.root) {
+				event.preventDefault();
+				event.stopImmediatePropagation();
+				this.resizeBundles(bundle, event);
+				return;
+			}
 			if (target.closest?.(".workspace-leaf-resize-handle") && target.closest(".workspace")) doc.body.addClass("vt-fold-resizing");
 		};
 		doc.addEventListener("pointerdown", startResize, true);
@@ -397,6 +409,65 @@ export class FoldingTabGroups {
 			doc.defaultView?.addEventListener("beforeunload", closing);
 			this.cleanup.push(() => doc.defaultView?.removeEventListener("beforeunload", closing));
 		}
+	}
+	/** Resize the visible pair, not the native (possibly collapsed) next sibling. */
+	private resizeBundles(bundle: Bundle, event: PointerEvent) {
+		this.cancelResize?.();
+		const siblings = this.bundles.filter(item => item.node.parent === bundle.node.parent);
+		const index = siblings.indexOf(bundle);
+		const left = siblings.slice(0, index + 1).reverse().find(item => !this.state(item).collapsed);
+		const right = siblings.slice(index + 1).find(item => !this.state(item).collapsed);
+		if (!left || !right) return;
+		const doc = bundle.bar.ownerDocument, win = doc.defaultView!;
+		const widths = siblings.map(item => item.node.containerEl.getBoundingClientRect().width);
+		const original = [...widths], a = siblings.indexOf(left), b = siblings.indexOf(right);
+		const total = widths.reduce((sum, width) => sum + width, 0);
+		const pair = widths[a]! + widths[b]!;
+		const minimum = Math.min(200, pair / 2);
+		let frame: number | undefined;
+		const paint = () => {
+			frame = undefined;
+			siblings.forEach((item, i) => item.node.containerEl.style.setProperty("--vt-fold-weight", String(Math.max(0, widths[i]! - 38))));
+			this.plugin.app.workspace.requestResize();
+		};
+		const move = (current: PointerEvent) => {
+			if (current.pointerId !== event.pointerId) return;
+			widths[a] = Math.max(minimum, Math.min(pair - minimum, original[a]! + current.clientX - event.clientX));
+			widths[b] = pair - widths[a];
+			if (frame === undefined) frame = win.requestAnimationFrame(paint);
+		};
+		const finish = (commit: boolean) => {
+			if (!this.cancelResize) return;
+			if (frame !== undefined) win.cancelAnimationFrame(frame);
+			if (!commit) widths.splice(0, widths.length, ...original);
+			paint();
+			if (commit && total > 0) {
+				siblings.forEach((item, i) => {
+					item.node.dimension = widths[i]! / total * 100;
+					if (!this.state(item).collapsed) this.state(item).manualWidth = true;
+				});
+				this.save();
+				this.plugin.app.workspace.requestSaveLayout();
+			}
+			doc.removeEventListener("pointermove", move, true);
+			doc.removeEventListener("pointerup", up, true);
+			doc.removeEventListener("pointercancel", cancel, true);
+			doc.removeEventListener("keydown", key, true);
+			win.removeEventListener("blur", cancel);
+			void doc.body.offsetWidth;
+			doc.body.removeClass("vt-fold-resizing");
+			this.cancelResize = undefined;
+		};
+		const up = (current: PointerEvent) => { if (current.pointerId === event.pointerId) { move(current); finish(true); } };
+		const cancel = () => finish(false);
+		const key = (current: KeyboardEvent) => { if (current.key === "Escape") cancel(); };
+		this.cancelResize = cancel;
+		doc.body.addClass("vt-fold-resizing");
+		doc.addEventListener("pointermove", move, true);
+		doc.addEventListener("pointerup", up, true);
+		doc.addEventListener("pointercancel", cancel, true);
+		doc.addEventListener("keydown", key, true);
+		win.addEventListener("blur", cancel);
 	}
 	private drag(bundle: Bundle, event: PointerEvent) {
 		if (event.button !== 0 || bundle.node === bundle.root) return;
