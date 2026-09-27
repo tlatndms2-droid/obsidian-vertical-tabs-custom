@@ -424,6 +424,11 @@ export class FoldingTabGroups {
 		const total = widths.reduce((sum, width) => sum + width, 0);
 		const pair = widths[a]! + widths[b]!;
 		const minimum = Math.min(200, pair / 2);
+		// Guest web contents do not bubble pointer events to this document.
+		// Keep the whole gesture in the host until release or cancellation.
+		const shield = doc.win.createDiv();
+		shield.className = "vt-fold-resize-shield";
+		shield.setAttribute("aria-hidden", "true");
 		let frame: number | undefined;
 		const paint = () => {
 			frame = undefined;
@@ -454,6 +459,8 @@ export class FoldingTabGroups {
 			doc.removeEventListener("pointercancel", cancel, true);
 			doc.removeEventListener("keydown", key, true);
 			win.removeEventListener("blur", cancel);
+			shield.remove();
+			doc.body.removeClass("vt-fold-webview-resizing");
 			void doc.body.offsetWidth;
 			doc.body.removeClass("vt-fold-resizing");
 			this.cancelResize = undefined;
@@ -463,6 +470,8 @@ export class FoldingTabGroups {
 		const key = (current: KeyboardEvent) => { if (current.key === "Escape") cancel(); };
 		this.cancelResize = cancel;
 		doc.body.addClass("vt-fold-resizing");
+		doc.body.addClass("vt-fold-webview-resizing");
+		doc.body.appendChild(shield);
 		doc.addEventListener("pointermove", move, true);
 		doc.addEventListener("pointerup", up, true);
 		doc.addEventListener("pointercancel", cancel, true);

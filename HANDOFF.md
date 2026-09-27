@@ -2,7 +2,15 @@
 
 Updated: 2026-09-27 (Asia/Seoul)
 
-## Latest update — 0.17.7-custom.9
+## Latest update — 0.17.7-custom.10
+
+- Fixed outer-divider drags losing pointer movement/release over embedded web contents. A transparent host shield and temporary webview/iframe pointer suppression exist only during the resize gesture; release, Escape, cancellation, blur and mode disable remove them through the existing cleanup path.
+- Reproduced on custom.9 using Obsidian's Web viewer and ChatGPT: 160px drag left the group at 474px and the gesture active; the markdown control moved to 314px and ended normally.
+- custom.10 Sandbox on Obsidian 1.13.7 passed left/right pointer tracking within 1px, release termination, Escape rollback, shield removal, and a real click received by the ChatGPT guest after drag. Simulated blur and mode-disable cleanup passed. Repeated the interaction pass after normal restart; widths and unblocked web input persisted. No captured host runtime errors.
+- Thirteen existing layout tests, TypeScript, focused ESLint and production build passed. All three installed assets hash-match the build. Evidence/backups: `C:/Users/tlatn/Documents/Codex/ResizeEvidence-20260927/custom10-*`.
+- Sandbox remains open with ChatGPT Web viewer beside a Markdown note. Real Vault untouched; no login or chat submission performed. Delivery target custom.10; existing Release re-download and BRAT reinstall exclusions remain.
+
+## Previous update — 0.17.7-custom.9
 
 - Outer divider dragging exchanges width between the nearest expanded groups across collapsed bars. Bars remain 38px and unrelated expanded groups retain their widths. Internal split/sidebar handles remain native.
 - Manual resize uses a 200px minimum (half the pair width when crowded). Manual widths survive tab activation and restart; automatic opening retains the 260px target for groups without manual widths. Escape cancels the drag.
@@ -90,7 +98,7 @@ The following cross-PC handoff section is the historical custom.5 baseline.
 
 ## Current implementation
 
-- Version: 0.17.7-custom.9; plugin ID: vertical-tabs-custom.
+- Version: 0.17.7-custom.10; plugin ID: vertical-tabs-custom.
 - Adds desktop-only Folding Tab Group Mode to the existing native tab-list menu.
 - Existing native group Hide/Show implementation from custom.1 is retained.
 - Earlier statements that the custom implementation has not started are obsolete; history is available in Git.
@@ -129,5 +137,5 @@ The following cross-PC handoff section is the historical custom.5 baseline.
 - Final cold-start validation: Obsidian 1.13.7. Initial interaction checks also ran on 1.12.7.
 - Evidence: C:/Users/tlatn/Documents/Codex/FoldingEvidence-20260921
 - Leave the Sandbox open and its fixtures intact for user review. Do not modify the live Vault.
-- Delivery tag: 0.17.7-custom.9.
+- Delivery tag: 0.17.7-custom.10.
 - User explicitly requested stopping after GitHub Release creation. Do not re-download Release assets or run BRAT installation/update verification unless newly requested.

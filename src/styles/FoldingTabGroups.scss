@@ -58,6 +58,16 @@
 	.vt-fold-node { transition: none; }
 	.vt-fold-node.vt-fold-collapsed > :not(.vt-fold-bar) { transition: none; }
 }
+.vt-fold-resize-shield {
+	position: fixed;
+	inset: 0;
+	z-index: 2147483647;
+	cursor: col-resize;
+	touch-action: none;
+	user-select: none;
+	-webkit-app-region: no-drag;
+}
+.vt-fold-webview-resizing :is(webview, iframe) { pointer-events: none !important; }
 .vt-fold-drop-before { box-shadow: inset 2px 0 var(--interactive-accent) !important; }
 .vt-fold-drop-after { box-shadow: inset -2px 0 var(--interactive-accent) !important; }
 

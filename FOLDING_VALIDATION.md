@@ -132,3 +132,10 @@ Release asset re-download and BRAT installation/update checks are intentionally 
 - Thirteen unit tests, TypeScript, production build and focused ESLint passed; no captured runtime errors; zero idle refreshes in 1.2s.
 - Normal Sandbox restart loaded custom.9 and retained IDs, widths within 1px, fold state and manual-width flags. Installed assets hash-match the build.
 - Evidence and backups: `C:/Users/tlatn/Documents/Codex/ResizeEvidence-20260927/custom9-*`. Sandbox left open; real Vault untouched. Release download/BRAT reinstall remain excluded per HANDOFF.
+# 2026-09-27 — custom.10 embedded Web viewer drag
+
+- On custom.9, an actual ChatGPT Web viewer intercepted movement/release: a requested -160px drag retained 474px and left the resize gesture active; identical markdown control reached 314px and terminated.
+- custom.10 uses a transient transparent host shield plus webview/iframe input suppression only while outer-divider resizing. Existing cleanup removes both.
+- Actual ChatGPT guest: left/right drag samples followed within 1px; pointer release ended resizing; Escape restored widths; no movement continued after release; a real CDP pointer click reached the guest after the shield was removed. No captured host runtime errors. Mode disable and a dispatched blur event both removed the shield and restored pointer access.
+- The initial hidden-window sample was discarded; repeated in a visible Sandbox. Normal restart retained widths and no shield, then the full ChatGPT interaction test passed again. Screenshot and guest URL confirmed ChatGPT, not only an empty Web viewer.
+- Thirteen existing layout tests, TypeScript, focused ESLint and production build passed; source/install hashes matched for all three assets. Evidence: `C:/Users/tlatn/Documents/Codex/ResizeEvidence-20260927/custom10-*`. Sandbox left open for user review; live Vault untouched. BRAT reinstall remains excluded per HANDOFF.
