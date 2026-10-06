@@ -485,6 +485,14 @@ export class ObsidianVerticalTabsSettingTab extends PluginSettingTab {
 	}
 
 	private displayVisualOptions(containerEl: HTMLElement | SettingGroup) {
+		if (Platform.isDesktop) {
+			this.createToggle(containerEl, {
+				name: "탭 그룹 접기·펼치기 애니메이션",
+				desc: "Folding Tab Group Mode에서 그룹 너비가 부드럽게 바뀝니다. 끄면 즉시 접히거나 펼쳐집니다.",
+				value: this.plugin.settings.foldingAnimation,
+				onChange: (value) => useSettings.getState().setSettings({ foldingAnimation: value }),
+			});
+		}
 		this.createToggle(containerEl, {
 			name: "Hide sidebar tabs",
 			desc: "Don't show sidebar tabs in Vertical Tabs.",
@@ -1443,6 +1451,12 @@ export class ObsidianVerticalTabsSettingTab extends PluginSettingTab {
 					!loadDisableOnThisDevice() &&
 					!this.plugin.settings.backgroundMode,
 				items: [
+					{
+						name: "탭 그룹 접기·펼치기 애니메이션",
+						desc: "Folding Tab Group Mode에서 그룹 너비가 부드럽게 바뀝니다. 끄면 즉시 접히거나 펼쳐집니다.",
+						visible: () => Platform.isDesktop,
+						control: { type: "toggle", key: "foldingAnimation" },
+					},
 					{
 						name: "Hide sidebar tabs",
 						desc: "Don't show sidebar tabs in Vertical Tabs.",

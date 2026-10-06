@@ -53,7 +53,10 @@ export default class ObsidianVerticalTabs extends Plugin {
 		await this.loadSettings();
 		await this.setupLocalStorageService();
 		const disableOnThisDevice = loadDisableOnThisDevice();
-		if (Platform.isDesktop && !disableOnThisDevice) this.folding = new FoldingTabGroups(this);
+		if (Platform.isDesktop && !disableOnThisDevice) {
+			this.folding = new FoldingTabGroups(this);
+			this.folding.setAnimationEnabled(this.settings.foldingAnimation);
+		}
 		this.register(registerNativeGroupVisibilityMenu(this.app, this.folding));
 		if (disableOnThisDevice) {
 			void useSettings.getState().loadSettings(this);
@@ -178,6 +181,7 @@ export default class ObsidianVerticalTabs extends Plugin {
 	}
 
 	async updateViewStates() {
+		this.folding?.setAnimationEnabled(this.settings.foldingAnimation);
 		this.toggle("vt-hide-sidebars", this.settings.hideSidebars);
 		this.toggle("vt-show-active-tabs", this.settings.showActiveTabs);
 		this.toggle("vt-scrollable-tabs", this.settings.scrollableTabs);

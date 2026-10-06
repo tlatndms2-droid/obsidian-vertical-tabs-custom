@@ -45,6 +45,7 @@
 		&:focus-visible { outline: 1px solid var(--interactive-accent); outline-offset: -2px; }
 	}
 }
+.vt-fold-node.vt-fold-no-animation { transition: none; }
 .vt-fold-node.vt-fold-collapsed {
 	flex-grow: 0 !important;
 	// Exclude collapsed contents from layout; visibility alone keeps that work alive.

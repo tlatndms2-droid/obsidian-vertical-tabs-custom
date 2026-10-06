@@ -5,6 +5,7 @@ import { TabClosingBehavior } from "src/services/CloseTabs";
 interface ObsidianVerticalTabsSettings {
 	showActiveTabs: boolean;
 	autoUncollapseGroup: boolean;
+	foldingAnimation: boolean;
 	hideSidebars: boolean;
 	sidebarTabTypes: string[] | null;
 	sidebarExcludeSelf: boolean;
@@ -46,6 +47,7 @@ interface ObsidianVerticalTabsSettings {
 export const DEFAULT_SETTINGS: ObsidianVerticalTabsSettings = {
 	showActiveTabs: false,
 	autoUncollapseGroup: false,
+	foldingAnimation: true,
 	hideSidebars: true,
 	sidebarTabTypes: ["markdown"],
 	sidebarExcludeSelf: true,

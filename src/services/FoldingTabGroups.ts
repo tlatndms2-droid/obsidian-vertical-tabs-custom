@@ -36,6 +36,7 @@ class RenameFoldGroup extends Modal {
 
 export class FoldingTabGroups {
 	enabled = false;
+	private animationEnabled = true;
 	private states: Record<string, FoldState> = {};
 	private bundles: Bundle[] = [];
 	private quitting = false;
@@ -105,6 +106,12 @@ export class FoldingTabGroups {
 		}));
 		workspace.onLayoutReady(() => { if (!this.disposed) this.refresh(); });
 	}
+	setAnimationEnabled(enabled: boolean) {
+		this.animationEnabled = enabled;
+		for (const bundle of this.bundles) {
+			bundle.node.containerEl.classList.toggle("vt-fold-no-animation", !enabled);
+		}
+	}
 	setEnabled(enabled: boolean) {
 		this.cancelResize?.();
 		this.focusLayouts.clear();
@@ -147,7 +154,7 @@ export class FoldingTabGroups {
 		this.sizeObservers = [];
 		for (const bundle of this.bundles) {
 			bundle.bar.remove();
-			bundle.node.containerEl.removeClass("vt-fold-node", "vt-fold-collapsed", "vt-fold-drop-before", "vt-fold-drop-after");
+			bundle.node.containerEl.removeClass("vt-fold-node", "vt-fold-collapsed", "vt-fold-no-animation", "vt-fold-drop-before", "vt-fold-drop-after");
 			bundle.node.containerEl.style.removeProperty("--vt-fold-weight");
 		}
 		this.bundles = [];
@@ -206,6 +213,7 @@ export class FoldingTabGroups {
 				bar.addEventListener("contextmenu", event => { event.preventDefault(); this.renameMenu(bundle, event); });
 				bar.addEventListener("pointerdown", event => this.drag(bundle, event));
 				node.containerEl.addClass("vt-fold-node");
+				node.containerEl.classList.toggle("vt-fold-no-animation", !this.animationEnabled);
 				node.containerEl.appendChild(bar);
 				this.state(bundle);
 			}
