@@ -1,8 +1,16 @@
 # Vertical Tabs Custom — current handoff
 
-Updated: 2026-09-27 (Asia/Seoul)
+Updated: 2026-10-06 (Asia/Seoul)
 
-## Latest update — 0.17.7-custom.10
+## Latest update — 0.17.7-custom.11
+
+- Reduced duplicate work when folding or activating a group. Unchanged bar/sidebar attributes and workspace position labels no longer emit unnecessary DOM/store updates. Existing controls and 240ms animation are preserved.
+- Trusted click measurements in an isolated Obsidian 1.14.4 Sandbox with four groups and copied secondbrain Canvas fixtures: expansion apply calls 5 → 2, collapse 2 → 1. Two unchanged apply calls produced zero bar/sidebar mutations. This is a reduction in redundant work, not a proven overall latency fix: matched four-click runs had maximum frame gaps of 90–153ms before and 90–187ms after. Separate plugin-isolation trials indicate additional Canvas plugin interaction costs; those plugins were not modified.
+- Thirteen layout tests, TypeScript, focused ESLint, production build and diff checks passed. Sandbox checks passed for 38px bars/icons, collapse/expand, Ctrl-click focus/restore, sidebar labels/open/close, external activation revealing a folded group, 40px divider drag, manual widths after activation, mode off/on and reduced motion. No captured runtime exceptions in the final interaction pass.
+- Normal Sandbox restart loaded custom.11 and preserved all four group IDs, fold states, manual-width flags and widths (38/300/372/38px). Evidence and pre-test backups: `C:/Users/tlatn/Documents/Codex/VerticalTabsPerfEvidence-20261006/`; valid comparison files are `control-old.json` and `control-new.json`.
+- Sandbox remains available for review. Original Vault files/plugin installation were not changed. Current approved delivery plan includes public Release asset verification and BRAT verification, superseding the historical exclusions below for this update.
+
+## Previous update — 0.17.7-custom.10
 
 - Fixed outer-divider drags losing pointer movement/release over embedded web contents. A transparent host shield and temporary webview/iframe pointer suppression exist only during the resize gesture; release, Escape, cancellation, blur and mode disable remove them through the existing cleanup path.
 - Reproduced on custom.9 using Obsidian's Web viewer and ChatGPT: 160px drag left the group at 474px and the gesture active; the markdown control moved to 314px and ended normally.

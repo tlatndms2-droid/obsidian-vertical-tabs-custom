@@ -553,25 +553,24 @@ export const useViewState = create<ViewState>()((set, get) => ({
 		const tabContainers = Array.from(
 			activeDocument.querySelectorAll(".workspace-tabs")
 		);
-		tabContainers.forEach((tabContainer) => {
-			tabContainer.classList.remove(
-				"vt-mod-top-left-space",
-				"vt-mod-top-right-space"
-			);
-		});
 		const { topLeftContainer, topRightContainer, allTopContainers } =
 			getCornerContainers(tabContainers);
-		topLeftContainer?.classList.add("vt-mod-top-left-space");
-		topRightContainer?.classList.add("vt-mod-top-right-space");
 		const excludedRightSidebar = tabContainers.filter(
 			(tabContainer) =>
 				!tabContainer.parentElement?.hasClass("mod-right-split")
 		);
 		const topRightMainContainer =
 			getCornerContainers(excludedRightSidebar).topRightContainer;
-		allTopContainers.forEach((container) => {
-			container.classList.add("vt-mod-top-space");
+		// Read geometry before writing classes, and leave unchanged labels alone.
+		tabContainers.forEach((container) => {
+			container.classList.toggle("vt-mod-top-left-space", container === topLeftContainer);
+			container.classList.toggle("vt-mod-top-right-space", container === topRightContainer);
+			container.classList.toggle("vt-mod-top-space", allTopContainers.includes(container));
 		});
+		const previous = get();
+		if (previous.topLeftContainer === topLeftContainer && previous.topRightContainer === topRightContainer &&
+			previous.topRightMainContainer === topRightMainContainer && previous.allTopContainers.length === allTopContainers.length &&
+			previous.allTopContainers.every((container, index) => container === allTopContainers[index])) return;
 		set({
 			topLeftContainer,
 			topRightContainer,

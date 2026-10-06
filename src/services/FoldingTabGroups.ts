@@ -241,12 +241,15 @@ export class FoldingTabGroups {
 				geometryChanged = true;
 			}
 			if (bundle.bar.getAttribute("aria-expanded") !== String(!collapsed)) bundle.bar.setAttribute("aria-expanded", String(!collapsed));
-			bundle.bar.toggleClass("is-active", !!activeGroup && bundle.groups.some(group => group.id === activeGroup));
+			// Obsidian's toggleClass uses add/remove even for unchanged values.
+			// Avoid waking workspace-wide mutation observers on a no-op refresh.
+			bundle.bar.classList.toggle("is-active", !!activeGroup && bundle.groups.some(group => group.id === activeGroup));
 		}
 		if (this.sidebarToggle) {
 			const collapsed = this.plugin.app.workspace.rightSplit.collapsed;
-			this.sidebarToggle.setAttribute("aria-label", collapsed ? "오른쪽 사이드바 열기" : "오른쪽 사이드바 닫기");
-			this.sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+			const label = collapsed ? "오른쪽 사이드바 열기" : "오른쪽 사이드바 닫기";
+			if (this.sidebarToggle.getAttribute("aria-label") !== label) this.sidebarToggle.setAttribute("aria-label", label);
+			if (this.sidebarToggle.getAttribute("aria-expanded") !== String(!collapsed)) this.sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
 		}
 		if (geometryChanged) this.plugin.app.workspace.requestResize();
 	}
@@ -276,7 +279,12 @@ export class FoldingTabGroups {
 			else this.focusLayouts.set(bundle.root, { target: bundle.key, states: new Map(siblings.map(item => [item.key, this.state(item).collapsed])), active: workspace.getActiveViewOfType(View)?.leaf });
 			for (const item of siblings) this.state(item).collapsed = item !== bundle;
 			const target = this.leaf(bundle);
-			if (target) workspace.setActiveLeaf(target, { focus: true });
+			if (target) {
+				this.state(bundle).lastLeaf = target.id;
+				this.changingFocus = true;
+				try { workspace.setActiveLeaf(target, { focus: true }); }
+				finally { this.changingFocus = false; }
+			}
 		}
 		this.apply(); this.save();
 	}
@@ -303,17 +311,25 @@ export class FoldingTabGroups {
 			state.collapsed = false;
 			this.apply();
 			const target = this.leaf(bundle);
-			if (target) workspace.setActiveLeaf(target, { focus: true });
+			if (target) {
+				state.lastLeaf = target.id;
+				this.changingFocus = true;
+				try { workspace.setActiveLeaf(target, { focus: true }); }
+				finally { this.changingFocus = false; }
+			}
 		}
 		this.apply(); this.save();
 	}
 	private activate(leaf: WorkspaceLeaf | null) {
-		if (!this.enabled || !leaf || this.changingFocus) return;
+		if (!this.enabled || !leaf?.parent || this.changingFocus) return;
 		const bundle = this.bundles.find(item => item.groups.some(group => group.id === leaf.parent.id));
 		if (!bundle) { this.schedule(); return; }
-		this.state(bundle).collapsed = false;
-		this.state(bundle).lastLeaf = leaf.id;
 		const view = useViewState.getState();
+		const state = this.state(bundle);
+		// setActiveLeaf and active-leaf-change can report the same activation.
+		if (!state.collapsed && state.lastLeaf === leaf.id && bundle.bar.classList.contains("is-active") && !view.hiddenGroups.includes(leaf.parent.id)) return;
+		state.collapsed = false;
+		state.lastLeaf = leaf.id;
 		if (view.hiddenGroups.includes(leaf.parent.id)) {
 			view.toggleHiddenGroup(leaf.parent.id, false, this.plugin.app);
 			this.plugin.app.workspace.trigger(EVENTS.UPDATE_TOGGLE);
