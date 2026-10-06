@@ -47,7 +47,9 @@
 }
 .vt-fold-node.vt-fold-collapsed {
 	flex-grow: 0 !important;
-	> :not(.vt-fold-bar) { visibility: hidden; transition: visibility 0s 240ms; pointer-events: none; }
+	// Exclude collapsed contents from layout; visibility alone keeps that work alive.
+	// Removing the collapsed class restores each child's native display mode.
+	> :not(.vt-fold-bar) { display: none !important; }
 }
 // Obsidian writes pixel widths while a native split handle is being dragged.
 .vt-fold-resizing .vt-fold-node {
@@ -56,7 +58,6 @@
 }
 @media (prefers-reduced-motion: reduce) {
 	.vt-fold-node { transition: none; }
-	.vt-fold-node.vt-fold-collapsed > :not(.vt-fold-bar) { transition: none; }
 }
 .vt-fold-resize-shield {
 	position: fixed;
