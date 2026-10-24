@@ -4,6 +4,7 @@ import { localStorageService } from "src/stores/LocalStorageService";
 import { EVENTS } from "src/constants/Events";
 import { around } from "monkey-around";
 import { foldingRoots, foldingWidths } from "./FoldingLayout";
+import { openEmptyGroupRight } from "./NewGroup";
 
 type Node = Omit<WorkspaceParent, "children" | "type"> & {
 	type: string;
@@ -350,6 +351,12 @@ export class FoldingTabGroups {
 			this.refresh();
 		}).open();
 		const menu = new Menu();
+		menu.addItem(item => item.setTitle("오른쪽에 새 그룹 만들기").setIcon("plus").onClick(() => {
+			const active = this.plugin.app.workspace.activeLeaf;
+			const source = active && bundle.groups.some(group => group.id === active.parent?.id)
+				? active : this.leaf(bundle) ?? bundle.groups[0]?.children[0] as unknown as WorkspaceLeaf | undefined;
+			if (source) void openEmptyGroupRight(this.plugin.app, source);
+		}));
 		menu.addItem(item => {
 			item.setTitle("이름 변경");
 			if (bundle.groups.length === 1) item.onClick(() => edit(bundle.groups[0]!));

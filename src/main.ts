@@ -43,6 +43,7 @@ import { ViewEphemeralState } from "obsidian-typings";
 import { localStorageService } from "./stores/LocalStorageService";
 import { registerNativeGroupVisibilityMenu } from "./services/NativeGroupVisibilityMenu";
 import { FoldingTabGroups } from "./services/FoldingTabGroups";
+import { openEmptyGroupRight } from "./services/NewGroup";
 
 export default class ObsidianVerticalTabs extends Plugin {
 	settings: Settings = DEFAULT_SETTINGS;
@@ -127,6 +128,16 @@ export default class ObsidianVerticalTabs extends Plugin {
 	}
 
 	async setupCommands() {
+		if (Platform.isDesktop) this.addCommand({
+			id: "new-group-right",
+			name: "오른쪽에 새 그룹과 빈 탭 열기",
+			checkCallback: checking => {
+				const leaf = this.app.workspace.getMostRecentLeaf();
+				if (!leaf || leaf.getRoot() === this.app.workspace.leftSplit || leaf.getRoot() === this.app.workspace.rightSplit) return false;
+				if (!checking) void openEmptyGroupRight(this.app, leaf);
+				return true;
+			},
+		});
 		this.addCommand({
 			id: "open",
 			name: "Open",
