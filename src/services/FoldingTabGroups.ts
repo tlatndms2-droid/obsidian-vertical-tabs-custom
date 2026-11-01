@@ -1,7 +1,6 @@
 import { App, Menu, Modal, Platform, Plugin, Setting, View, WorkspaceLeaf, WorkspaceParent, setIcon } from "obsidian";
-import { DEFAULT_GROUP_TITLE, useViewState } from "src/models/ViewState";
+import { DEFAULT_GROUP_TITLE, groupNames } from "./GroupNames";
 import { localStorageService } from "src/stores/LocalStorageService";
-import { EVENTS } from "src/constants/Events";
 import { around } from "monkey-around";
 import { foldingRoots, foldingWidths } from "./FoldingLayout";
 import { openEmptyGroupRight } from "./NewGroup";
@@ -91,20 +90,6 @@ export class FoldingTabGroups {
 		plugin.registerEvent(workspace.on("window-open", () => this.schedule()));
 		plugin.registerEvent(workspace.on("window-close", () => this.schedule()));
 		plugin.registerEvent(workspace.on("quit", () => { this.quitting = true; this.save(); }));
-		// Sidebar position labels also update this store after a workspace resize.
-		// Only group presentation changes should schedule folding work, otherwise
-		// apply -> resize -> sidebar labels -> store creates a permanent refresh loop.
-		const presentation = () => {
-			const state = useViewState.getState();
-			return JSON.stringify([Array.from(state.groupTitles), state.hiddenGroups]);
-		};
-		let lastPresentation = presentation();
-		this.cleanup.push(useViewState.subscribe(() => {
-			const next = presentation();
-			if (next === lastPresentation) return;
-			lastPresentation = next;
-			this.schedule();
-		}));
 		workspace.onLayoutReady(() => { if (!this.disposed) this.refresh(); });
 	}
 	setAnimationEnabled(enabled: boolean) {
@@ -128,7 +113,7 @@ export class FoldingTabGroups {
 	private groups(node: Node): Node[] {
 		return node.type === "tabs" ? [node] : node.children.flatMap(child => this.groups(child));
 	}
-	private name(group: Node) { return useViewState.getState().groupTitles.get(group.id) || DEFAULT_GROUP_TITLE; }
+	private name(group: Node) { return groupNames.get(group.id) || DEFAULT_GROUP_TITLE; }
 	private weight(node: Node) {
 		// Native dimensions include the Bar; flex distributes only the space after it.
 		const parentWidth = this.contentWidth(node.containerEl.parentElement);
@@ -298,8 +283,8 @@ export class FoldingTabGroups {
 		this.apply(); this.save();
 	}
 	private leaf(bundle: Bundle): WorkspaceLeaf | undefined {
-		const state = this.state(bundle), hidden = useViewState.getState().hiddenGroups;
-		const leaves = bundle.groups.filter(group => !hidden.includes(group.id)).flatMap(group => group.children as unknown as WorkspaceLeaf[]);
+		const state = this.state(bundle);
+		const leaves = bundle.groups.flatMap(group => group.children as unknown as WorkspaceLeaf[]);
 		return leaves.find(leaf => leaf.id === state.lastLeaf) ?? leaves[0];
 	}
 	private toggle(bundle: Bundle) {
@@ -333,21 +318,16 @@ export class FoldingTabGroups {
 		if (!this.enabled || !leaf?.parent || this.changingFocus) return;
 		const bundle = this.bundles.find(item => item.groups.some(group => group.id === leaf.parent.id));
 		if (!bundle) { this.schedule(); return; }
-		const view = useViewState.getState();
 		const state = this.state(bundle);
 		// setActiveLeaf and active-leaf-change can report the same activation.
-		if (!state.collapsed && state.lastLeaf === leaf.id && bundle.bar.classList.contains("is-active") && !view.hiddenGroups.includes(leaf.parent.id)) return;
+		if (!state.collapsed && state.lastLeaf === leaf.id && bundle.bar.classList.contains("is-active")) return;
 		state.collapsed = false;
 		state.lastLeaf = leaf.id;
-		if (view.hiddenGroups.includes(leaf.parent.id)) {
-			view.toggleHiddenGroup(leaf.parent.id, false, this.plugin.app);
-			this.plugin.app.workspace.trigger(EVENTS.UPDATE_TOGGLE);
-		}
 		this.apply(); this.save();
 	}
 	private renameMenu(bundle: Bundle, event: MouseEvent) {
 		const edit = (group: Node) => new RenameFoldGroup(this.plugin.app, bundle.bar.ownerDocument, this.name(group), name => {
-			useViewState.getState().setGroupTitle(group.id, name);
+			groupNames.set(group.id, name);
 			this.refresh();
 		}).open();
 		const menu = new Menu();
@@ -551,8 +531,7 @@ export class FoldingTabGroups {
 	dispose() {
 		this.disposed = true;
 		if (this.timer !== undefined) window.clearTimeout(this.timer);
-		if (!this.quitting) { this.enabled = false; this.states = {}; this.save(); }
-		else this.save();
+		this.save();
 		this.clearUI();
 		for (const cleanup of this.cleanup) cleanup();
 		this.plugin.app.workspace.requestResize();

@@ -1,496 +1,109 @@
-import {
-	FileView,
-	ItemView,
-	MarkdownView,
-	OpenViewState,
-	Platform,
-	Plugin,
-	TFile,
-	View,
-	Workspace,
-	WorkspaceLeaf,
-	WorkspaceParent,
-	addIcon,
-} from "obsidian";
-import {
-	VerticalTabsView,
-	VERTICAL_TABS_VIEW,
-} from "src/views/VerticalTabsView";
-import { DEFAULT_SETTINGS, Settings } from "./models/PluginSettings";
-import { around } from "monkey-around";
-import { ZOOM_FACTOR_TOLERANCE } from "./services/TabZoom";
-import { hydrateViewState, useViewState } from "./models/ViewState";
-import { hydrateTabCacheStore } from "./stores/TabCacheStore";
-import { ObsidianVerticalTabsSettingTab } from "./views/SettingTab";
-import { loadDisableOnThisDevice, useSettings } from "./models/PluginContext";
-import { patchQuickSwitcher } from "./services/EphemeralTabs";
-import { linkTasksStore } from "./stores/LinkTaskStore";
-import { parseLink } from "./services/ParseLink";
-import {
-	SAFE_DETACH_TIMEOUT,
-	safeDetach,
-	TabClosingBehavior,
-} from "./services/CloseTabs";
-import { REFRESH_TIMEOUT_LONG } from "./constants/Timeouts";
-import { VERTICAL_TABS_ICON } from "./icon";
-import { scrollToActiveTab } from "./services/ScrollableTabs";
-import { updateOrientationLabel } from "./services/Orientation";
-import { getOpenFileOfLeaf } from "./services/GetTabs";
-import { managedLeafStore } from "./stores/ManagedLeafStore";
-import { isHoverEditorEnabled } from "./services/HoverEditorTabs";
-import { removeAllTabControlButtons } from "./services/TabControlButtons";
-import { ViewEphemeralState } from "obsidian-typings";
-import { localStorageService } from "./stores/LocalStorageService";
-import { registerNativeGroupVisibilityMenu } from "./services/NativeGroupVisibilityMenu";
+import { ItemView, Platform, Plugin, PluginSettingTab, Setting, WorkspaceLeaf } from "obsidian";
 import { FoldingTabGroups } from "./services/FoldingTabGroups";
+import { registerNativeGroupVisibilityMenu } from "./services/NativeGroupVisibilityMenu";
 import { openEmptyGroupRight } from "./services/NewGroup";
+import { localStorageService } from "./stores/LocalStorageService";
+import { groupNames } from "./services/GroupNames";
 
-export default class ObsidianVerticalTabs extends Plugin {
-	settings: Settings = DEFAULT_SETTINGS;
-	folding: FoldingTabGroups | null = null;
-
-	async onload() {
-		addIcon("vertical-tabs-custom", VERTICAL_TABS_ICON);
-		await this.loadSettings();
-		await this.setupLocalStorageService();
-		const disableOnThisDevice = loadDisableOnThisDevice();
-		if (Platform.isDesktop && !disableOnThisDevice) {
-			this.folding = new FoldingTabGroups(this);
-			this.folding.setAnimationEnabled(this.settings.foldingAnimation);
-		}
-		this.register(registerNativeGroupVisibilityMenu(this.app, this.folding));
-		if (disableOnThisDevice) {
-			void useSettings.getState().loadSettings(this);
-			this.addSettingTab(
-				new ObsidianVerticalTabsSettingTab(this.app, this)
-			);
-			return;
-		}
-		await this.registerEventsAndViews();
-		await this.setupCommands();
-		await this.updateViewStates();
-		await this.patchViews();
-		this.addSettingTab(new ObsidianVerticalTabsSettingTab(this.app, this));
-		this.app.workspace.onLayoutReady(() => {
-			const isPhone = Platform.isPhone;
-			const isUnknownMobile = Platform.isMobile && !Platform.isTablet;
-			const tabletOrDesktop = Platform.isTablet || Platform.isDesktop;
-			const sidebarCollapse = this.app.workspace.leftSplit.collapsed;
-			const shouldCollapse =
-				isPhone ||
-				isUnknownMobile ||
-				(tabletOrDesktop && sidebarCollapse);
-			void this.openVerticalTabs();
-			if (shouldCollapse) {
-				window.setTimeout(() =>
-					this.app.workspace.leftSplit.collapse()
-				);
-			}
-			window.setTimeout(() => {
-				useViewState.getState().refreshToggleButtons(this.app);
-			}, REFRESH_TIMEOUT_LONG);
-		});
-	}
-
-	async registerEventsAndViews() {
-		this.registerView(
-			VERTICAL_TABS_VIEW,
-			(leaf) => new VerticalTabsView(leaf, this)
-		);
-		this.registerEvents();
-	}
-
-	registerEvents() {
-		this.registerScrollableTabsEvents();
-		this.registerOrientationEvents();
-	}
-
-	registerScrollableTabsEvents() {
-		this.registerEvent(
-			this.app.workspace.on("active-leaf-change", (leaf) => {
-				scrollToActiveTab(leaf);
-			})
-		);
-		this.registerEvent(
-			this.app.workspace.on("editor-change", (_, info) => {
-				if (info instanceof MarkdownView) {
-					scrollToActiveTab(info.leaf);
-				}
-			})
-		);
-	}
-
-	registerOrientationEvents() {
-		if (Platform.isPhone) {
-			updateOrientationLabel();
-			this.registerDomEvent(window, "resize", updateOrientationLabel);
-		}
-	}
-
-	async setupCommands() {
-		if (Platform.isDesktop) this.addCommand({
-			id: "new-group-right",
-			name: "오른쪽에 새 그룹과 빈 탭 열기",
-			checkCallback: checking => {
-				const leaf = this.app.workspace.getMostRecentLeaf();
-				if (!leaf || leaf.getRoot() === this.app.workspace.leftSplit || leaf.getRoot() === this.app.workspace.rightSplit) return false;
-				if (!checking) void openEmptyGroupRight(this.app, leaf);
-				return true;
-			},
-		});
-		this.addCommand({
-			id: "open",
-			name: "Open",
-			callback: () => {
-				void this.openVerticalTabs();
-				useSettings.getState().toggleBackgroundMode(this.app, false);
-			},
-		});
-	}
-
-	async setupLocalStorageService() {
-		localStorageService.init(this.app);
-		hydrateViewState();
-		hydrateTabCacheStore();
-	}
-
-	async openVerticalTabs() {
-		try {
-			const leaf: WorkspaceLeaf | null =
-				this.app.workspace.getLeavesOfType(VERTICAL_TABS_VIEW)[0] ??
-				this.app.workspace.getLeftLeaf(false);
-			if (!leaf) return;
-			await leaf.setViewState({ type: VERTICAL_TABS_VIEW, active: true });
-			await this.app.workspace.revealLeaf(leaf);
-		} catch {
-			// do nothing
-		}
-	}
-
-	onunload() {
-		this.folding?.dispose();
-		if (this.settings.enhancedKeyboardTabSwitch) {
-			useViewState.getState().resetViewCueCallback(this.app);
-		}
-		removeAllTabControlButtons(this.app);
-	}
-
-	async loadSettings() {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			(await this.loadData()) as Settings
-		);
-	}
-
-	async saveSettings() {
-		await this.saveData(this.settings);
-	}
-
-	toggle(classes: string | string[], value: boolean) {
-		this.app.workspace.containerEl.doc.body.toggleClass(classes, value);
-	}
-
-	async updateViewStates() {
-		this.folding?.setAnimationEnabled(this.settings.foldingAnimation);
-		this.toggle("vt-hide-sidebars", this.settings.hideSidebars);
-		this.toggle("vt-show-active-tabs", this.settings.showActiveTabs);
-		this.toggle("vt-scrollable-tabs", this.settings.scrollableTabs);
-		this.toggle(
-			"vt-auto-hide-horizontal-tabs",
-			this.settings.autoHideHorizontalTabs
-		);
-		this.toggle("vt-exclude-self", this.settings.sidebarExcludeSelf);
-		this.toggle("vt-trim-tab-names", this.settings.trimTabNames);
-		this.toggle("vt-show-more-buttons", this.settings.showMoreButtons);
-		this.toggle("vt-use-tab-editing", this.settings.useTabEditing);
-		this.toggle("vt-zen-mode", this.settings.zenMode);
-		this.toggle("vt-auto-hide-tabs", this.settings.showActiveTabsInZenMode);
-		this.toggle("vt-enable-tab-zoom", this.settings.enableTabZoom);
-		this.toggle("vt-ephemeral-tabs", this.settings.ephemeralTabs);
-		this.toggle("vt-background-mode", this.settings.backgroundMode);
-		this.toggle(
-			"vt-mission-control-view-disable-pointer",
-			this.settings.disablePointerInMissionControlView
-		);
-		this.toggle("vt-prefer-new-tab", this.settings.alwaysOpenInNewTab);
-		this.toggle(
-			"vt-allow-workspace-split",
-			this.settings.allowWorkspaceSplitOnPhone
-		);
-
-		// Limit visible groups to 2 when allowWorkspaceSplitOnPhone is enabled on mobile
-		if (Platform.isMobile && this.settings.allowWorkspaceSplitOnPhone) {
-			window.setTimeout(() =>
-				useViewState.getState().limitVisibleGroupsOnPhone(this.app)
-			);
-		}
-	}
-
-	async patchViews() {
-		const applyZoom = (view: View, zoom: number) => {
-			if (!this.settings.enableTabZoom) {
-				return;
-			}
-			if (zoom <= 0) return;
-			const isNonUnitaryZoom = Math.abs(zoom - 1) > ZOOM_FACTOR_TOLERANCE;
-			if (isNonUnitaryZoom) {
-				view.containerEl.setCssProps({
-					"--vt-tab-zoom-factor": zoom.toString(),
-				});
-			} else {
-				view.containerEl.setCssProps({
-					"--vt-tab-zoom-factor": "",
-				});
-			}
-			view.leaf.containerEl?.toggleClass(
-				"vt-apply-tab-zoom",
-				isNonUnitaryZoom
-			);
-		};
-
-		this.register(
-			around(ItemView.prototype, {
-				setEphemeralState(old) {
-					return function (
-						this: ItemView & { zoom?: number },
-						eState: ViewEphemeralState
-					) {
-						const newState = { zoom: this.zoom ?? 1, ...eState };
-						old.call(this, newState);
-						this.zoom = newState.zoom;
-						applyZoom(this, this.zoom);
-					};
-				},
-				getEphemeralState(old) {
-					return function (this: ItemView & { zoom?: number }) {
-						const eState = old.call(this);
-						this.zoom = this.zoom ?? 1;
-						applyZoom(this, this.zoom);
-						return { zoom: this.zoom, ...eState };
-					};
-				},
-				onload(old) {
-					return function (this: ItemView & { zoom?: number }) {
-						old.call(this);
-						applyZoom(this, this.zoom ?? 1);
-					};
-				},
-			})
-		);
-
-		const modifyCanNavigate = (
-			target: WorkspaceLeaf,
-			fallback: () => boolean
-		): boolean => {
-			if (this.settings.alwaysOpenInNewTab) {
-				return false;
-			} else if (
-				this.settings.ephemeralTabs ||
-				this.settings.smartNavigation
-			) {
-				const ephemeralTabsecision =
-					target.isEphemeral === undefined || target.isEphemeral
-						? fallback()
-						: false;
-				const smartNavigationDecision = useViewState
-					.getState()
-					.executeSmartNavigation(this.app, target, fallback);
-				return ephemeralTabsecision && smartNavigationDecision;
-			} else {
-				return fallback();
-			}
-		};
-
-		const modifyOpenFile = async (
-			target: WorkspaceLeaf,
-			file: TFile,
-			openState: OpenViewState,
-			fallback: (
-				target: WorkspaceLeaf,
-				file: TFile,
-				openState?: OpenViewState
-			) => Promise<void>
-		) => {
-			const {
-				deduplicateTabs,
-				deduplicateSameGroupTabs,
-				deduplicateSidebarTabs,
-				deduplicatePopupTabs,
-			} = this.settings;
-			if (!deduplicateTabs) return fallback(target, file, openState);
-			let found = false;
-			const callback = (leaf: WorkspaceLeaf) => {
-				if (leaf.id === target.id || found) return;
-				// prettier-ignore
-				if (managedLeafStore.getState().actions.isManagedLeaf(this.app, leaf)) return;
-				// prettier-ignore
-				if (!deduplicateSidebarTabs && (leaf.getRoot() === this.app.workspace.leftSplit || leaf.getRoot() === this.app.workspace.rightSplit)) return;
-				// prettier-ignore
-				if (!deduplicatePopupTabs && leaf.getRoot() === this.app.workspace.floatingSplit) return;
-				// prettier-ignore
-				if (deduplicateSameGroupTabs && leaf.parent.id !== target.parent.id) return;
-				const leafFile = getOpenFileOfLeaf(this.app, leaf);
-				if (leafFile && leafFile.path === file.path) {
-					found = true;
-					void fallback(leaf, file, openState);
-					this.app.workspace.setActiveLeaf(leaf, { focus: false });
-					safeDetach(target);
-				}
-			};
-			this.app.workspace.iterateAllLeaves(callback);
-			if (!found) return fallback(target, file, openState);
-		};
-
-		const modifyDetach = (target: WorkspaceLeaf) => {
-			const parent = target.parent;
-			if (!parent?.children) return;
-			const targetIndex = parent.children.indexOf(target);
-			const count = parent.children.length;
-			// Only apply when closing the selected tab. Programmatic detaches
-			// (dedup, ephemeral cleanup, etc.) must not override selection. (#231)
-			if (targetIndex < 0 || parent.currentTab !== targetIndex) return;
-			if (count <= 1) return;
-			switch (this.settings.tabClosingBehavior) {
-				case TabClosingBehavior.ActiveLeft:
-					parent.selectTabIndex(Math.max(0, targetIndex - 1));
-					break;
-				case TabClosingBehavior.ActiveRight: {
-					const rightTabIndex = targetIndex + 1;
-					const leftTabIndex = targetIndex - 1;
-					parent.selectTabIndex(
-						rightTabIndex < count
-							? rightTabIndex
-							: Math.max(0, leftTabIndex)
-					);
-					break;
-				}
-				case TabClosingBehavior.ActiveRecent: {
-					let recentTabIndex = Math.max(0, targetIndex - 1);
-					let recentActiveTime = -1;
-					parent.children.forEach((leaf, index) => {
-						if (leaf === target) return;
-						const activeTime = leaf.activeTime ?? 0;
-						if (activeTime > recentActiveTime) {
-							recentTabIndex = index;
-							recentActiveTime = activeTime;
-						}
-					});
-					parent.selectTabIndex(recentTabIndex);
-					break;
-				}
-			}
-		};
-
-		this.register(
-			around(WorkspaceLeaf.prototype, {
-				canNavigate(old) {
-					return function (this: WorkspaceLeaf) {
-						return modifyCanNavigate(this, () => old.call(this));
-					};
-				},
-				setParent(old) {
-					return function (
-						this: WorkspaceLeaf,
-						parent: WorkspaceParent
-					) {
-						// If guessedCreationTime is not set, we assume the leaf was created now
-						if (!this.guessedCreationTime) {
-							this.guessedCreationTime = Date.now();
-						}
-						old.call(this, parent);
-					};
-				},
-				openFile(old) {
-					return function (
-						this: WorkspaceLeaf,
-						file: TFile,
-						openState?: OpenViewState
-					) {
-						const fallback = (
-							target: WorkspaceLeaf,
-							file: TFile,
-							openState?: OpenViewState
-						) => old.call(target, file, openState);
-						if (isHoverEditorEnabled(this.app)) {
-							if (!this.parent.parentSplit)
-								return fallback(this, file, openState);
-						}
-						if (openState) {
-							void modifyOpenFile(
-								this,
-								file,
-								openState,
-								fallback
-							);
-						} else {
-							return fallback(this, file, openState);
-						}
-						return fallback(this, file, openState);
-					};
-				},
-				detach(old) {
-					return function (this: WorkspaceLeaf) {
-						modifyDetach(this);
-						old.call(this);
-					};
-				},
-			})
-		);
-
-		around(Workspace.prototype, {
-			openLinkText(old) {
-				return async function (
-					this: Workspace,
-					linkText: string,
-					sourcePath: string,
-					newLeaf?: boolean,
-					openViewState?: OpenViewState
-				) {
-					const { addOpenLinkTextTask } = linkTasksStore.getActions();
-					const { path, subpath } = parseLink(linkText);
-					const name = path ? `${path}.md` : sourcePath;
-					addOpenLinkTextTask(name, subpath);
-					return old.call(
-						this,
-						linkText,
-						sourcePath,
-						newLeaf,
-						openViewState
-					);
-				};
-			},
-		});
-
-		this.register(
-			around(FileView.prototype, {
-				close(old) {
-					return async function (this: FileView) {
-						if (this.isDetachingFromVT) {
-							window.setTimeout(
-								() => void old.call(this),
-								SAFE_DETACH_TIMEOUT
-							);
-						} else {
-							return old.call(this);
-						}
-					};
-				},
-			})
-		);
-
-		this.register(
-			around(MarkdownView.prototype, {
-				getSyncViewState(old) {
-					return function (this: MarkdownView) {
-						const syncViewState = old.call(this);
-						delete (syncViewState.eState as { zoom?: number }).zoom;
-						return syncViewState;
-					};
-				},
-			})
-		);
-
-		this.register(patchQuickSwitcher(this.app));
-	}
+interface Settings { foldingAnimation: boolean; zenMode: boolean; showActiveTabsInZenMode: boolean; }
+export default class FoldingZenPlugin extends Plugin {
+ settings: Settings = { foldingAnimation: true, zenMode: false, showActiveTabsInZenMode: false };
+ folding: FoldingTabGroups | null = null;
+ private buttons = new Map<WorkspaceLeaf, { view: ItemView; element: HTMLElement }>();
+ private lastMainLeaf: WorkspaceLeaf | null = null;
+ private marked = new Set<Element>();
+ private ribbon?: HTMLElement;
+ private disposed = false;
+ async onload() {
+  const saved = await this.loadData();
+  for (const key of Object.keys(this.settings) as (keyof Settings)[]) {
+   if (typeof saved?.[key] === "boolean") this.settings[key] = saved[key];
+  }
+  localStorageService.init(this.app); groupNames.load();
+  if (Platform.isDesktop) {
+   this.folding = new FoldingTabGroups(this);
+   this.folding.setAnimationEnabled(this.settings.foldingAnimation);
+   this.register(registerNativeGroupVisibilityMenu(this.app, this.folding));
+  }
+  this.addCommand({ id: "toggle-zen-mode", name: "Toggle zen mode", callback: () => { void this.toggleZen(); } });
+  this.addCommand({ id: "new-group-right", name: "오른쪽에 새 그룹과 빈 탭 열기", checkCallback: checking => {
+   const leaf = this.app.workspace.getMostRecentLeaf();
+   if (!leaf || !Platform.isDesktop || leaf.getRoot() === this.app.workspace.leftSplit || leaf.getRoot() === this.app.workspace.rightSplit) return false;
+   if (!checking) void openEmptyGroupRight(this.app, leaf);
+   return true;
+  }});
+  this.ribbon = this.addRibbonIcon("focus", "Toggle zen mode", () => { void this.toggleZen(); });
+  this.addSettingTab(new FocusSettings(this.app, this));
+  this.registerEvent(this.app.workspace.on("active-leaf-change", leaf => {
+   if (leaf?.getRoot() === this.app.workspace.rootSplit) this.lastMainLeaf = leaf;
+   this.updateZen(); this.updateButtons();
+  }));
+  this.registerEvent(this.app.workspace.on("layout-change", () => { this.updateZen(); this.updateButtons(); }));
+  this.registerEvent(this.app.workspace.on("file-open", () => this.updateButtons()));
+  this.app.workspace.onLayoutReady(() => {
+   if (this.disposed) return;
+   // Remove the retired panel from a saved workspace without opening any files.
+   this.app.workspace.getLeavesOfType("vertical-tabs-custom").forEach(leaf => leaf.detach());
+   this.updateZen(); this.updateButtons();
+  });
+ }
+ async saveSettings() { await this.saveData(this.settings); }
+ async toggleZen() {
+  this.settings.zenMode = !this.settings.zenMode;
+  this.updateZen(); this.updateButtons(); await this.saveSettings();
+ }
+ updateZen() {
+  if (this.disposed) return;
+  const workspace = this.app.workspace, root = workspace.rootSplit.containerEl;
+  const active = workspace.getMostRecentLeaf();
+  if (active?.getRoot() === workspace.rootSplit) this.lastMainLeaf = active;
+  if (!this.lastMainLeaf?.containerEl.isConnected) {
+   this.lastMainLeaf = null;
+   workspace.iterateAllLeaves(leaf => { if (!this.lastMainLeaf && leaf.getRoot() === workspace.rootSplit) this.lastMainLeaf = leaf; });
+  }
+  const next = new Set<Element>();
+  let element: HTMLElement | undefined = this.lastMainLeaf?.parent?.containerEl;
+  while (element && element !== root) { next.add(element); element = element.parentElement ?? undefined; }
+  let changed = false;
+  for (const old of this.marked) if (!next.has(old)) { old.classList.remove("vt-zen-path"); changed = true; }
+  for (const el of next) if (!this.marked.has(el)) { el.classList.add("vt-zen-path"); changed = true; }
+  this.marked = next;
+  const enabled = this.settings.zenMode && !!this.lastMainLeaf;
+  if (root.classList.contains("vt-zen-root") !== enabled) { root.classList.toggle("vt-zen-root", enabled); changed = true; }
+  root.classList.toggle("vt-zen-hide-tabs", this.settings.showActiveTabsInZenMode);
+  if (changed) workspace.requestResize();
+ }
+ private updateButtons() {
+  if (this.disposed) return;
+  for (const [leaf, entry] of this.buttons) {
+   if (!leaf.containerEl.isConnected || leaf.view !== entry.view || !entry.element.isConnected) { entry.element.remove(); this.buttons.delete(leaf); }
+  }
+  this.app.workspace.iterateAllLeaves(leaf => {
+   if (leaf.getRoot() !== this.app.workspace.rootSplit || !(leaf.view instanceof ItemView) || this.buttons.has(leaf)) return;
+   const element = leaf.view.addAction("focus", "Toggle zen mode", () => { this.app.workspace.setActiveLeaf(leaf, { focus: true }); void this.toggleZen(); });
+   element.addClass("vt-zen-toggle"); this.buttons.set(leaf, { view: leaf.view, element });
+  });
+  for (const element of [this.ribbon, ...[...this.buttons.values()].map(entry => entry.element)]) {
+   element?.classList.toggle("is-active", this.settings.zenMode);
+   if (element?.getAttribute("aria-pressed") !== String(this.settings.zenMode)) element?.setAttribute("aria-pressed", String(this.settings.zenMode));
+  }
+ }
+ onunload() {
+  this.disposed = true; this.folding?.dispose();
+  for (const {element} of this.buttons.values()) element.remove();
+  for (const el of this.marked) el.classList.remove("vt-zen-path");
+  this.app.workspace.rootSplit.containerEl.removeClass("vt-zen-root", "vt-zen-hide-tabs");
+  this.app.workspace.requestResize();
+ }
+}
+class FocusSettings extends PluginSettingTab {
+ declare plugin: FoldingZenPlugin;
+ display() {
+  this.containerEl.empty();
+  new Setting(this.containerEl).setName("Folding · Zen").setHeading();
+  new Setting(this.containerEl).setName("Folding Tab Group Mode").setDesc("그룹을 세로 막대로 접거나 펼칩니다. 탭 목록 메뉴에서도 전환할 수 있습니다.").addToggle(toggle => toggle.setValue(this.plugin.folding?.enabled ?? false).setDisabled(!this.plugin.folding).onChange(value => this.plugin.folding?.setEnabled(value)));
+  new Setting(this.containerEl).setName("탭 그룹 접기·펼치기 애니메이션").setDesc("끄면 너비가 즉시 바뀝니다. 접힌 내용의 화면 계산 제외는 계속 적용됩니다.").addToggle(toggle => toggle.setValue(this.plugin.settings.foldingAnimation).onChange(async value => { this.plugin.settings.foldingAnimation = value; this.plugin.folding?.setAnimationEnabled(value); await this.plugin.saveSettings(); }));
+  new Setting(this.containerEl).setName("Zen 모드").setDesc("현재 문서 그룹만 표시합니다. 끄면 기존 그룹 배치로 돌아갑니다.").addToggle(toggle => toggle.setValue(this.plugin.settings.zenMode).onChange(async value => { if (value !== this.plugin.settings.zenMode) await this.plugin.toggleZen(); }));
+  new Setting(this.containerEl).setName("Zen 모드에서 비활성 탭 숨기기").addToggle(toggle => toggle.setValue(this.plugin.settings.showActiveTabsInZenMode).onChange(async value => { this.plugin.settings.showActiveTabsInZenMode = value; this.plugin.updateZen(); await this.plugin.saveSettings(); }));
+ }
 }

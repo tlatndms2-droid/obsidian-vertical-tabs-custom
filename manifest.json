@@ -1,9 +1,9 @@
 {
 	"id": "vertical-tabs-custom",
 	"name": "Vertical Tabs Custom",
-	"version": "0.17.7-custom.14",
+	"version": "0.17.7-custom.15",
 	"minAppVersion": "1.8.7",
-	"description": "Offer an alternative view that displays open tabs vertically, allowing users to group and organize tabs for a better navigation experience.",
+	"description": "Folding tab groups and Zen focus, with right-side empty groups.",
 	"author": "oxdc",
 	"authorUrl": "https://github.com/oxdc",
 	"isDesktopOnly": false,

@@ -1,73 +1,8 @@
-// Manual tab group hiding functionality
-// This only applies when zen mode is disabled - allows users to hide tab groups
-// by clicking the eye icon in the group header
-body:not(.vt-zen-mode):not(.is-phone) .workspace-split.mod-root {
-	.workspace-tabs.is-hidden {
-		// Hide tab groups that are manually marked as hidden
-		display: none;
-	}
-
-	.workspace-split {
-		// Hide all workspace splits by default to prevent visually empty containers from showing
-		display: none;
-
-		// Show splits that contain at least one visible tab group (#21)
-		&:has(.workspace-tabs:not(.is-hidden)) {
-			display: flex;
-		}
-
-		// Show splits from third-party plugins that don't contain workspace tabs
-		// (e.g., Excalidraw embeds, custom plugin containers) (#166)
-		&:not(:has(.workspace-tabs)) {
-			display: flex;
-		}
-	}
+.vt-zen-root {
+ > :is(.workspace-tabs, .workspace-split):not(.vt-zen-path),
+ .workspace-split > :is(.workspace-tabs, .workspace-split):not(.vt-zen-path) { display: none !important; }
+ .vt-zen-path { flex: 1 1 100% !important; }
+ &.vt-zen-hide-tabs .workspace-tab-header:not(.is-active) { display: none; }
+ .workspace-tabs { --tab-stacked-pane-width: 100%; }
 }
-
-body.vt-zen-mode:not(.is-popout-window) .workspace-split.mod-root {
-	.workspace-tabs {
-		&:not(.mod-active),
-		&:not(.vt-mod-active) {
-			display: none;
-			flex-basis: unset;
-		}
-
-		&.mod-active,
-		&.vt-mod-active {
-			display: flex;
-			flex-basis: 100%;
-		}
-	}
-
-	.workspace-split {
-		&:has(.workspace-tabs.mod-active),
-		&:has(.workspace-tabs.vt-mod-active) {
-			flex-basis: 100%;
-		}
-	}
-}
-
-body.vt-zen-mode.vt-auto-hide-tabs:not(.is-popout-window)
-	.workspace-split.mod-root {
-	.workspace-tabs > .workspace-tab-header-container {
-		.workspace-tab-header {
-			container-type: unset; // fix tab width from Obsidian 1.8.0
-
-			&.is-active {
-				max-width: unset;
-				width: unset;
-			}
-		}
-	}
-}
-
-body.vt-zen-mode {
-	--tab-stacked-pane-width: 100%;
-}
-
-body.vt-zen-mode
-	.obsidian-vertical-tabs-container
-	.tree-item.is-group
-	.clickable-icon.action-button.action-eye-off {
-	display: none;
-}
+.vt-zen-toggle.is-active { color: var(--interactive-accent); }
