@@ -21,6 +21,7 @@ type Bundle = {
 	groups: Node[];
 	key: string;
 	bar: HTMLButtonElement;
+	closeButton: HTMLButtonElement;
 	webObserver: MutationObserver;
 	webHeaders: HTMLElement[];
 	iconName?: string;
@@ -192,6 +193,7 @@ export class FoldingTabGroups {
 		for (const bundle of this.bundles) {
 			bundle.webObserver.disconnect();
 			bundle.bar.remove();
+			bundle.closeButton.remove();
 			bundle.node.containerEl.removeClass("vt-fold-node", "vt-fold-collapsed", "vt-fold-no-animation", "vt-fold-drop-before", "vt-fold-drop-after");
 			bundle.node.containerEl.style.removeProperty("--vt-fold-weight");
 		}
@@ -242,17 +244,23 @@ export class FoldingTabGroups {
 				const icon = bar.createSpan({ cls: "vt-fold-icon" });
 				icon.setAttribute("aria-hidden", "true");
 				bar.createSpan({ cls: "vt-fold-title" });
+				const closeButton = doc.win.createEl("button", {
+					cls: "vt-fold-close",
+					attr: { type: "button", "aria-label": "그룹 닫기", title: "그룹 닫기" },
+				});
+				setIcon(closeButton, "x");
 				const webObserver = new MutationObserver(() => this.updateBar(bundle));
-				const bundle: Bundle = { root, node, groups, key, bar, webObserver, webHeaders: [] };
+				const bundle: Bundle = { root, node, groups, key, bar, closeButton, webObserver, webHeaders: [] };
 				this.bundles.push(bundle);
 				// Screen order is the workspace tree's top-to-bottom / left-to-right order.
 				this.updateBar(bundle);
 				bar.addEventListener("click", event => event.ctrlKey ? this.focusBundle(bundle) : this.toggle(bundle));
 				bar.addEventListener("contextmenu", event => { event.preventDefault(); this.renameMenu(bundle, event); });
 				bar.addEventListener("pointerdown", event => this.drag(bundle, event));
+				closeButton.addEventListener("click", () => this.closeGroups(bundle.groups));
 				node.containerEl.addClass("vt-fold-node");
 				node.containerEl.classList.toggle("vt-fold-no-animation", !this.animationEnabled);
-				node.containerEl.appendChild(bar);
+				node.containerEl.append(bar, closeButton);
 				this.state(bundle);
 			}
 			const siblings = this.bundles.filter(bundle => bundle.root === root);

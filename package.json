@@ -1,6 +1,6 @@
 {
 	"name": "vertical-tabs-custom",
-	"version": "0.17.7-custom.17",
+	"version": "0.17.7-custom.18",
 	"description": "Folding tab groups and Zen focus, with right-side empty groups.",
 	"main": "main.js",
 	"scripts": {

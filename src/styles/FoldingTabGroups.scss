@@ -45,13 +45,35 @@
 		&:hover { background: var(--background-modifier-hover); }
 		&:focus-visible { outline: 1px solid var(--interactive-accent); outline-offset: -2px; }
 	}
+	> .vt-fold-close {
+		position: absolute;
+		top: 0;
+		left: 0;
+		display: grid;
+		place-items: center;
+		width: 37px;
+		height: var(--header-height, 40px);
+		padding: 0;
+		margin: 0;
+		border: 0;
+		border-radius: 0;
+		box-shadow: none;
+		background: transparent;
+		color: var(--text-muted);
+		cursor: pointer;
+		z-index: 4;
+		-webkit-app-region: no-drag;
+		svg { width: 16px; height: 16px; }
+		&:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+		&:focus-visible { outline: 1px solid var(--interactive-accent); outline-offset: -2px; }
+	}
 }
 .vt-fold-node.vt-fold-no-animation { transition: none; }
 .vt-fold-node.vt-fold-collapsed {
 	flex-grow: 0 !important;
 	// Exclude collapsed contents from layout; visibility alone keeps that work alive.
 	// Removing the collapsed class restores each child's native display mode.
-	> :not(.vt-fold-bar) { display: none !important; }
+	> :not(.vt-fold-bar, .vt-fold-close) { display: none !important; }
 }
 // Obsidian writes pixel widths while a native split handle is being dragged.
 .vt-fold-resizing .vt-fold-node {
