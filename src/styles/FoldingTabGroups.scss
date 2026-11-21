@@ -31,8 +31,9 @@
 		cursor: grab;
 		z-index: 3;
 		touch-action: none;
-		.vt-fold-icon { display: flex; flex: 0 0 16px; }
+		.vt-fold-icon { position: relative; display: grid; place-items: center; flex: 0 0 16px; width: 16px; }
 		.vt-fold-icon svg { width: 16px; height: 16px; stroke-width: 1.6; }
+		.vt-fold-icon img { position: absolute; inset: 0; width: 16px; height: 16px; object-fit: contain; }
 		.vt-fold-title {
 			writing-mode: vertical-rl;
 			text-orientation: sideways;

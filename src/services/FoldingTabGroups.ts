@@ -4,6 +4,7 @@ import { localStorageService } from "src/stores/LocalStorageService";
 import { around } from "monkey-around";
 import { foldingRoots, foldingWidths } from "./FoldingLayout";
 import { openEmptyGroupRight } from "./NewGroup";
+import { groupTabDisplay } from "./GroupTabDisplay";
 
 type Node = Omit<WorkspaceParent, "children" | "type"> & {
 	type: string;
@@ -14,7 +15,17 @@ type Node = Omit<WorkspaceParent, "children" | "type"> & {
 };
 type FoldState = { collapsed: boolean; lastLeaf?: string; manualWidth?: boolean };
 type Saved = { enabled: boolean; bundles: Record<string, FoldState> };
-type Bundle = { node: Node; root: Node; groups: Node[]; key: string; bar: HTMLButtonElement };
+type Bundle = {
+	node: Node;
+	root: Node;
+	groups: Node[];
+	key: string;
+	bar: HTMLButtonElement;
+	webObserver: MutationObserver;
+	webHeaders: HTMLElement[];
+	iconName?: string;
+	favicon?: string;
+};
 const STORAGE = "vertical-tabs-custom:folding-v1";
 
 class RenameFoldGroup extends Modal {
@@ -120,12 +131,11 @@ export class FoldingTabGroups {
 	private groups(node: Node): Node[] {
 		return node.type === "tabs" ? [node] : node.children.flatMap(child => this.groups(child));
 	}
+	private selectedLeaf(group: Node) {
+		return (group.children[group.currentTab] ?? group.children[0]) as unknown as WorkspaceLeaf | undefined;
+	}
 	private name(group: Node) {
-		const customName = groupNames.get(group.id);
-		if (customName) return customName;
-		const firstLeaf = group.children[0] as unknown as WorkspaceLeaf | undefined;
-		const view = firstLeaf?.view;
-		return (view?.getViewType() !== "empty" && view?.getDisplayText().trim()) || DEFAULT_GROUP_TITLE;
+		return groupNames.get(group.id) || groupTabDisplay(this.selectedLeaf(group)).title;
 	}
 	private weight(node: Node) {
 		// Native dimensions include the Bar; flex distributes only the space after it.
@@ -138,10 +148,38 @@ export class FoldingTabGroups {
 		return element.clientWidth - parseFloat(style.paddingLeft || "0") - parseFloat(style.paddingRight || "0");
 	}
 	private updateBar(bundle: Bundle) {
-		const name = bundle.groups.map(group => this.name(group)).join(" + ");
+		const leaves = bundle.groups.map(group => this.selectedLeaf(group));
+		const displays = leaves.map(groupTabDisplay);
+		const name = bundle.groups.map((group, index) => groupNames.get(group.id) || displays[index]!.title).join(" + ");
 		const title = bundle.bar.querySelector(".vt-fold-title")!;
 		if (title.textContent !== name) title.textContent = name;
 		if (bundle.bar.getAttribute("aria-label") !== name) bundle.bar.setAttribute("aria-label", name);
+		const selectedIndex = leaves.findIndex(leaf => leaf?.id === this.state(bundle).lastLeaf);
+		const display = displays[Math.max(0, selectedIndex)]!;
+		if (bundle.iconName !== display.icon || bundle.favicon !== display.favicon) {
+			bundle.iconName = display.icon;
+			bundle.favicon = display.favicon;
+			const icon = bundle.bar.querySelector<HTMLElement>(".vt-fold-icon")!;
+			setIcon(icon, display.icon);
+			if (display.favicon) {
+				const img = icon.createEl("img", { attr: { alt: "" } });
+				img.addEventListener("load", () => {
+					if (img.parentElement === icon) icon.querySelector("svg")?.remove();
+				}, { once: true });
+				img.addEventListener("error", () => img.remove(), { once: true });
+				img.src = display.favicon;
+			}
+		}
+
+		const headers = leaves.flatMap(leaf => leaf?.view.getViewType() === "webviewer"
+			? [leaf.tabHeaderInnerTitleEl, leaf.tabHeaderInnerIconEl].filter(Boolean) : []);
+		if (headers.length !== bundle.webHeaders.length || headers.some((header, index) => header !== bundle.webHeaders[index])) {
+			bundle.webObserver.disconnect();
+			bundle.webHeaders = headers;
+			for (const header of headers) {
+				bundle.webObserver.observe(header, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["src"] });
+			}
+		}
 	}
 	private state(bundle: Bundle): FoldState { return this.states[bundle.key] ??= { collapsed: false }; }
 	private clearUI() {
@@ -152,6 +190,7 @@ export class FoldingTabGroups {
 		for (const observer of this.sizeObservers) observer.disconnect();
 		this.sizeObservers = [];
 		for (const bundle of this.bundles) {
+			bundle.webObserver.disconnect();
 			bundle.bar.remove();
 			bundle.node.containerEl.removeClass("vt-fold-node", "vt-fold-collapsed", "vt-fold-no-animation", "vt-fold-drop-before", "vt-fold-drop-after");
 			bundle.node.containerEl.style.removeProperty("--vt-fold-weight");
@@ -202,9 +241,9 @@ export class FoldingTabGroups {
 				bar.type = "button";
 				const icon = bar.createSpan({ cls: "vt-fold-icon" });
 				icon.setAttribute("aria-hidden", "true");
-				setIcon(icon, "copy");
 				bar.createSpan({ cls: "vt-fold-title" });
-				const bundle: Bundle = { root, node, groups, key, bar };
+				const webObserver = new MutationObserver(() => this.updateBar(bundle));
+				const bundle: Bundle = { root, node, groups, key, bar, webObserver, webHeaders: [] };
 				this.bundles.push(bundle);
 				// Screen order is the workspace tree's top-to-bottom / left-to-right order.
 				this.updateBar(bundle);
@@ -332,10 +371,13 @@ export class FoldingTabGroups {
 		const bundle = this.bundles.find(item => item.groups.some(group => group.id === leaf.parent.id));
 		if (!bundle) { this.schedule(); return; }
 		const state = this.state(bundle);
+		// Tab activation changes the rail immediately without rebuilding the layout.
+		const changedTab = state.lastLeaf !== leaf.id;
 		// setActiveLeaf and active-leaf-change can report the same activation.
 		if (!state.collapsed && state.lastLeaf === leaf.id && bundle.bar.classList.contains("is-active")) return;
 		state.collapsed = false;
 		state.lastLeaf = leaf.id;
+		if (changedTab) this.updateBar(bundle);
 		this.apply(); this.save();
 	}
 	private renameMenu(bundle: Bundle, event: MouseEvent) {
