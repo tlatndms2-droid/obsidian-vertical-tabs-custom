@@ -63,15 +63,18 @@ export class FoldingTabGroups {
 		const workspace = plugin.app.workspace;
 		const keepLastLeaf = (leaf: WorkspaceLeaf) => this.enabled && !this.disposed && !this.quitting && !this.closingGroup &&
 			leaf.parent?.children.length === 1 && this.bundles.some(bundle => bundle.groups.some(group => group.id === leaf.parent.id));
+		const refreshNameAfterDetach = () => { if (this.enabled) this.schedule(); };
 		this.cleanup.push(around(WorkspaceLeaf.prototype, {
 			detach(old) {
 				return function (this: WorkspaceLeaf) {
 					if (keepLastLeaf(this)) {
 						// Reuse the last native leaf so the group's identity, name and position survive.
-						if (this.view.getViewType() !== "empty") void this.setViewState({ type: "empty", state: {} });
+						if (this.view.getViewType() !== "empty") void this.setViewState({ type: "empty", state: {} }).then(refreshNameAfterDetach);
 						return;
 					}
-					return old.call(this);
+					const result = old.call(this);
+					refreshNameAfterDetach();
+					return result;
 				};
 			},
 		}));
@@ -86,6 +89,10 @@ export class FoldingTabGroups {
 			},
 		}));
 		plugin.registerEvent(workspace.on("layout-change", () => this.schedule()));
+		plugin.registerEvent(workspace.on("file-open", () => { if (this.enabled) this.schedule(); }));
+		plugin.registerEvent(plugin.app.vault.on("rename", () => {
+			if (this.enabled) this.schedule();
+		}));
 		plugin.registerEvent(workspace.on("active-leaf-change", leaf => this.activate(leaf)));
 		plugin.registerEvent(workspace.on("window-open", () => this.schedule()));
 		plugin.registerEvent(workspace.on("window-close", () => this.schedule()));
@@ -113,7 +120,13 @@ export class FoldingTabGroups {
 	private groups(node: Node): Node[] {
 		return node.type === "tabs" ? [node] : node.children.flatMap(child => this.groups(child));
 	}
-	private name(group: Node) { return groupNames.get(group.id) || DEFAULT_GROUP_TITLE; }
+	private name(group: Node) {
+		const customName = groupNames.get(group.id);
+		if (customName) return customName;
+		const firstLeaf = group.children[0] as unknown as WorkspaceLeaf | undefined;
+		const view = firstLeaf?.view;
+		return (view?.getViewType() !== "empty" && view?.getDisplayText().trim()) || DEFAULT_GROUP_TITLE;
+	}
 	private weight(node: Node) {
 		// Native dimensions include the Bar; flex distributes only the space after it.
 		const parentWidth = this.contentWidth(node.containerEl.parentElement);
