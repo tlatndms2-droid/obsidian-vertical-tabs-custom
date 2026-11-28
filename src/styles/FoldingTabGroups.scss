@@ -4,6 +4,9 @@
 	padding-left: 38px !important;
 	min-width: 38px !important;
 	overflow: hidden;
+	// Keep the rail and pane z-indexes inside each group so overlays on the root
+	// split (e.g. Claudian's floating chat) are drawn above folding groups.
+	isolation: isolate;
 	flex: var(--vt-fold-weight, 100) 1 38px !important;
 	transition: flex-grow 240ms cubic-bezier(.4, 0, .2, 1);
 	> .vt-fold-bar {
